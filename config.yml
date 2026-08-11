@@ -1,0 +1,23 @@
+# PhantomGate Configuration
+# ─────────────────────────
+
+listen_ip: "0.0.0.0"
+http_port: 80
+https_port: 443
+admin_port: 8443
+admin_pass: "changeme"
+domain: ""
+
+log_level: "info"
+
+tls:
+  mode: "self-signed"    # Options: "self-signed", "manual", "auto" (Let's Encrypt)
+  cert_file: ""
+  key_file: ""
+  acme_email: ""
+
+stealth:
+  remove_proxy_headers: true
+  spoof_server_header: "Microsoft-IIS/10.0"
+  enable_fingerprinting: true
+  randomize_timings: true

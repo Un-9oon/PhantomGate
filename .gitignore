@@ -1,0 +1,6 @@
+phantomgate_data.json
+*.log
+bin/
+certs/*.pem
+certs/*.key
+.env
