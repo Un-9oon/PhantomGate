@@ -1,0 +1,31 @@
+name: "Test App"
+author: "PhantomGate"
+min_ver: "1.0.0"
+
+proxy_hosts:
+  - phish_sub: "app"
+    orig_sub: "127.0.0.1:9999"
+    domain: "127.0.0.1:9999"
+    session: true
+    is_ssl: false
+
+sub_filters: []
+
+credentials:
+  username:
+    key: "username"
+    search: ""
+    type: "post"
+  password:
+    key: "password"
+    search: ""
+    type: "post"
+
+auth_tokens:
+  - domain: "127.0.0.1"
+    keys:
+      - "session_token"
+      - "auth_id"
+
+landing_path:
+  - "/login"

