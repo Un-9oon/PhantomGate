@@ -1,0 +1,43 @@
+{
+  "4a94154bc45f969018c798779258b47d": {
+    "id": "4a94154bc45f969018c798779258b47d",
+    "lure_id": "",
+    "ip": "127.0.0.1:36670",
+    "user_agent": "curl/8.20.0",
+    "phishlet": "Test App",
+    "first_seen": "2026-08-13T15:30:43.966000793+05:00",
+    "last_seen": "2026-08-13T15:30:44.004808682+05:00",
+    "credentials": [
+      {
+        "id": "510aa6774d9f7138",
+        "victim_id": "4a94154bc45f969018c798779258b47d",
+        "username": "victim@corp.com",
+        "password": "SuperSecret99!",
+        "source_ip": "127.0.0.1:36670",
+        "user_agent": "curl/8.20.0",
+        "phishlet": "Test App",
+        "timestamp": "2026-08-13T15:30:43.966000114+05:00"
+      }
+    ],
+    "sessions": [
+      {
+        "id": "cd99b1a28e275bd1",
+        "victim_id": "4a94154bc45f969018c798779258b47d",
+        "cookies": {
+          "auth_id": "AUTH_ID_secret_987654",
+          "session_token": "STOLEN_SESSION_abc123xyz"
+        },
+        "domain": "",
+        "source_ip": "",
+        "user_agent": "",
+        "phishlet": "Test App",
+        "timestamp": "2026-08-13T15:30:44.004807459+05:00",
+        "is_valid": true
+      }
+    ],
+    "tokens": {
+      "auth_id": "AUTH_ID_secret_987654",
+      "session_token": "STOLEN_SESSION_abc123xyz"
+    }
+  }
+}

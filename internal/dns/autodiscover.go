@@ -136,21 +136,24 @@ func getDefaultGatewayFallback() (string, string, error) {
 	return gateway, iface, nil
 }
 
-// hexToIP converts a hex-encoded IP from /proc/net/route (little-endian) to dotted notation
+// hexToIP converts a hex-encoded IP from /proc/net/route to dotted notation.
+// /proc/net/route stores IPs in host byte order (little-endian on x86),
+// so hex "868E1FAC" = bytes [0x86,0x8E,0x1F,0xAC] = 172.31.142.134 (reversed).
 func hexToIP(hexStr string) (string, error) {
 	if len(hexStr) != 8 {
 		return "", fmt.Errorf("invalid hex IP: %s", hexStr)
 	}
 
-	var bytes [4]byte
+	var octets [4]byte
 	for i := 0; i < 4; i++ {
-		var b int
+		var b uint64
 		fmt.Sscanf(hexStr[i*2:i*2+2], "%02X", &b)
-		bytes[i] = byte(b)
+		octets[i] = byte(b)
 	}
 
-	// /proc/net/route uses little-endian on x86
-	return fmt.Sprintf("%d.%d.%d.%d", bytes[3], bytes[2], bytes[1], bytes[0]), nil
+	// /proc/net/route is host-byte-order (little-endian on x86/x86_64)
+	// Byte 0 is the LSB, so reverse to get network order
+	return fmt.Sprintf("%d.%d.%d.%d", octets[3], octets[2], octets[1], octets[0]), nil
 }
 
 // isWirelessInterface checks if an interface is wireless

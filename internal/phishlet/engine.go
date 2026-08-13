@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -76,6 +77,7 @@ type AuthToken struct {
 // PhishletManager loads and manages phishlet configurations
 type PhishletManager struct {
 	phishlets map[string]*Phishlet
+	stems     map[string]string // filename stem → phishlet name
 	dir       string
 }
 
@@ -83,6 +85,7 @@ type PhishletManager struct {
 func NewPhishletManager(dir string) *PhishletManager {
 	return &PhishletManager{
 		phishlets: make(map[string]*Phishlet),
+		stems:     make(map[string]string),
 		dir:       dir,
 	}
 }
@@ -105,15 +108,50 @@ func (pm *PhishletManager) LoadAll() error {
 			return fmt.Errorf("failed to load phishlet %s: %w", f, err)
 		}
 		pm.phishlets[p.Name] = p
+		// Store the filename stem for fuzzy matching in Get()
+		stem := strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))
+		if stem != p.Name {
+			pm.stems[stem] = p.Name
+		}
 	}
 
 	return nil
 }
 
-// Get returns a phishlet by name
+// Get returns a phishlet by name. Matches flexibly:
+// exact name, case-insensitive, with/without spaces, or filename stem.
 func (pm *PhishletManager) Get(name string) (*Phishlet, bool) {
-	p, ok := pm.phishlets[name]
-	return p, ok
+	// Exact match first
+	if p, ok := pm.phishlets[name]; ok {
+		return p, true
+	}
+
+	// Check filename stems (e.g., "microsoft365" → "Microsoft 365")
+	if realName, ok := pm.stems[name]; ok {
+		if p, ok := pm.phishlets[realName]; ok {
+			return p, true
+		}
+	}
+
+	// Normalize: lowercase, strip spaces
+	norm := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+	for key, p := range pm.phishlets {
+		keyNorm := strings.ToLower(strings.ReplaceAll(key, " ", ""))
+		if keyNorm == norm {
+			return p, true
+		}
+	}
+
+	// Check stems normalized
+	for stem, realName := range pm.stems {
+		if strings.ToLower(stem) == norm {
+			if p, ok := pm.phishlets[realName]; ok {
+				return p, true
+			}
+		}
+	}
+
+	return nil, false
 }
 
 // List returns all loaded phishlet names
@@ -163,14 +201,34 @@ func loadPhishlet(path string) (*Phishlet, error) {
 		return nil, err
 	}
 
+	// Pre-populate proxy hosts with IsSSL=true as default
+	type rawPhishlet struct {
+		Phishlet   `yaml:",inline"`
+		RawHosts   []map[string]interface{} `yaml:"proxy_hosts_raw"`
+	}
+
 	var p Phishlet
 	if err := yaml.Unmarshal(data, &p); err != nil {
 		return nil, err
 	}
 
-	// Default SSL
-	for i := range p.ProxyHosts {
-		p.ProxyHosts[i].IsSSL = true
+	// Set default IsSSL=true only for hosts that didn't explicitly set it
+	// Since yaml.v3 sets bool zero-value (false) when unmarshalling,
+	// we re-parse to check which fields were explicitly set
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err == nil {
+		if hosts, ok := raw["proxy_hosts"].([]interface{}); ok {
+			for i, h := range hosts {
+				if i >= len(p.ProxyHosts) {
+					break
+				}
+				if hostMap, ok := h.(map[string]interface{}); ok {
+					if _, hasSSL := hostMap["is_ssl"]; !hasSSL {
+						p.ProxyHosts[i].IsSSL = true
+					}
+				}
+			}
+		}
 	}
 
 	return &p, nil

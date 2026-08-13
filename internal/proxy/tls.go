@@ -26,8 +26,7 @@ func createSelfSignedCertPEM(key *ecdsa.PrivateKey, domain string) (certPEM, key
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"Microsoft Corporation"},
-			CommonName:   domain,
+			CommonName: domain,
 		},
 		NotBefore:             time.Now().Add(-1 * time.Hour),
 		NotAfter:              time.Now().Add(365 * 24 * time.Hour),

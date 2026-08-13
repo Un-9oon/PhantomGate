@@ -22,7 +22,7 @@ credentials:
     type: "post"
 
 auth_tokens:
-  - domain: "127.0.0.1"
+  - domain: "app.test.local"
     keys:
       - "session_token"
       - "auth_id"

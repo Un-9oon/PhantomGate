@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux
 
 package dns
 
@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-	"unsafe"
 )
 
 // Linux-specific raw socket operations for ARP poisoning
@@ -81,8 +80,67 @@ func triggerARPResolution(ip net.IP) {
 	cmd.Run()
 }
 
-// enableIPForwarding enables IP forwarding on Linux so poisoned traffic
-// can be forwarded through our machine to the real gateway
+// arpingResolve uses the arping tool to directly resolve a MAC address.
+// This is more reliable than ping+ARP-cache because arping sends a raw
+// ARP request and parses the reply directly.
+func arpingResolve(ip net.IP, iface string) (net.HardwareAddr, error) {
+	// Try arping (most distros have it)
+	cmd := exec.Command("arping", "-c", "2", "-w", "3", "-I", iface, ip.String())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Try the iputils variant (different flag syntax)
+		cmd = exec.Command("arping", "-c", "2", "-W", "3", "-I", iface, ip.String())
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("arping not available or failed: %w", err)
+		}
+	}
+
+	// Parse output for MAC address pattern like [aa:bb:cc:dd:ee:ff]
+	outStr := string(output)
+	for _, line := range strings.Split(outStr, "\n") {
+		// Look for lines containing a MAC address in brackets
+		start := strings.Index(line, "[")
+		end := strings.Index(line, "]")
+		if start >= 0 && end > start {
+			macStr := line[start+1 : end]
+			mac, err := net.ParseMAC(macStr)
+			if err == nil {
+				return mac, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("arping got no reply from %s", ip)
+}
+
+// readARPTable reads all entries from /proc/net/arp and returns a map of IP → MAC
+func readARPTable() (map[string]net.HardwareAddr, error) {
+	f, err := os.Open("/proc/net/arp")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	entries := make(map[string]net.HardwareAddr)
+	scanner := bufio.NewScanner(f)
+	scanner.Scan() // skip header
+
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) < 4 {
+			continue
+		}
+		mac, err := net.ParseMAC(fields[3])
+		if err != nil || mac.String() == "00:00:00:00:00:00" {
+			continue
+		}
+		entries[fields[0]] = mac
+	}
+
+	return entries, nil
+}
+
 func EnableIPForwarding() error {
 	return os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644)
 }
@@ -135,5 +193,3 @@ func CleanupIPTables(listenPort int) {
 	}
 }
 
-// Ensure unsafe is referenced (needed for potential future syscall use)
-var _ = unsafe.Pointer(nil)
