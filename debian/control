@@ -1,0 +1,26 @@
+Source: phantomgate
+Section: net
+Priority: optional
+Maintainer: Un-9oon <un9oon@protonmail.com>
+Build-Depends: debhelper-compat (= 13), golang-go (>= 1.23)
+Standards-Version: 4.6.2
+Homepage: https://github.com/Un-9oon/PhantomGate
+Vcs-Git: https://github.com/Un-9oon/PhantomGate.git
+Vcs-Browser: https://github.com/Un-9oon/PhantomGate
+
+Package: phantomgate
+Architecture: amd64
+Depends: ${misc:Depends}, iptables, iproute2
+Recommends: hostapd, dnsmasq, arping, iw
+Description: Adversary-in-the-Middle reverse proxy framework for red teams
+ PhantomGate is a precision-engineered AiTM reverse proxy that transparently
+ sits between a victim and a real authentication portal (Microsoft 365,
+ GitHub, Google, etc.). It captures credentials, intercepts MFA tokens,
+ and steals authenticated session cookies in real-time.
+ .
+ Features include YAML-based phishlet system, real-time operator dashboard,
+ ARP+DNS poisoning for LAN interception, rogue AP creation, dynamic CA
+ certificate generation, and captive portal for CA distribution.
+ .
+ WARNING: This tool is designed exclusively for authorized penetration
+ testing and Red Team engagements.

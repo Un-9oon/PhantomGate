@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -196,9 +197,12 @@ func (s *Store) save() {
 
 	data, err := json.MarshalIndent(s.victims, "", "  ")
 	if err != nil {
+		log.Printf("[!] Failed to marshal store data: %v", err)
 		return
 	}
-	os.WriteFile(s.filePath, data, 0600)
+	if err := os.WriteFile(s.filePath, data, 0600); err != nil {
+		log.Printf("[!] Failed to persist store to %s: %v", s.filePath, err)
+	}
 }
 
 func (s *Store) load() {

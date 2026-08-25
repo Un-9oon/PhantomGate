@@ -1,0 +1,95 @@
+.TH PHANTOMGATE 1 "August 2026" "1.0.0" "PhantomGate Manual"
+.SH NAME
+phantomgate \- Adversary-in-the-Middle reverse proxy framework for red teams
+.SH SYNOPSIS
+.B phantomgate
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B PhantomGate
+is an AiTM reverse proxy that transparently sits between a victim and a real
+authentication portal. It captures credentials, intercepts MFA tokens, and
+steals authenticated session cookies in real-time.
+.PP
+\fBWARNING:\fR This tool is designed \fBexclusively\fR for authorized
+penetration testing and Red Team engagements. Unauthorized use is illegal.
+.SH OPTIONS
+.TP
+.BI \-\-domain " DOMAIN"
+Phishing domain name (required). Example: login-secure.com
+.TP
+.BI \-\-phishlet " NAME"
+Phishlet to activate (required). Use \-\-list to see available phishlets.
+.TP
+.BI \-\-phishlet\-dir " DIR"
+Directory containing phishlet YAML files. Default: /usr/share/phantomgate/phishlets
+.TP
+.BI \-\-config " FILE"
+Path to config file. Default: /etc/phantomgate/config.yml
+.TP
+.BI \-\-https\-port " PORT"
+HTTPS proxy listener port. Default: 443
+.TP
+.BI \-\-http\-port " PORT"
+HTTP redirect listener port. Default: 80
+.TP
+.BI \-\-admin\-port " PORT"
+Operator dashboard port. Default: 8443
+.TP
+.BI \-\-admin\-pass " PASSWORD"
+Dashboard authentication password (required).
+.TP
+.BI \-\-store " FILE"
+Path for persistent data storage. Default: phantomgate_data.json
+.TP
+.B \-\-intercept
+Enable DNS interception mode (ARP + DNS poisoning on LAN).
+.TP
+.BI \-\-gateway " IP"
+Gateway IP for ARP poisoning.
+.TP
+.BI \-\-victim\-ip " IPS"
+Comma-separated victim IPs (empty = entire subnet).
+.TP
+.B \-\-wizard
+Launch interactive wizard for LAN interception setup.
+.TP
+.B \-\-rogue\-ap
+Create a rogue WiFi access point.
+.TP
+.BI \-\-ap\-ssid " SSID"
+SSID for the rogue AP. Default: Free_WiFi
+.TP
+.B \-\-use\-ca
+Generate dynamic TLS certificates signed by a local CA.
+.TP
+.B \-\-captive\-portal
+Enable captive portal for CA cert distribution.
+.TP
+.B \-\-list
+List available phishlets and exit.
+.TP
+.B \-\-version
+Print version and exit.
+.SH EXAMPLES
+.TP
+Standard deployment:
+.B sudo phantomgate \-\-domain login-secure.com \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss
+.TP
+LAN interception with wizard:
+.B sudo phantomgate \-\-domain test.local \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-wizard
+.TP
+Rogue AP mode:
+.B sudo phantomgate \-\-domain test.local \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-rogue-ap
+.SH FILES
+.TP
+.I /etc/phantomgate/config.yml
+Default configuration file.
+.TP
+.I /usr/share/phantomgate/phishlets/
+Default phishlet directory.
+.SH BUGS
+Report bugs at: https://github.com/Un-9oon/PhantomGate/issues
+.SH AUTHOR
+Un-9oon
+.SH LICENSE
+MIT License. See /usr/share/doc/phantomgate/copyright for details.

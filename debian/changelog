@@ -1,0 +1,13 @@
+phantomgate (1.0.0-1) unstable; urgency=medium
+
+  * Initial release.
+  * AiTM reverse proxy with credential and session capture
+  * YAML phishlet system (Microsoft 365, GitHub, Google, testapp)
+  * Real-time WebSocket operator dashboard
+  * ARP + DNS poisoning for LAN interception
+  * Rogue AP creation with captive portal
+  * Dynamic CA certificate generation
+  * Interactive wizard for guided setup
+  * Full test suite with fuzz tests
+
+ -- Un-9oon <un9oon@protonmail.com>  Mon, 25 Aug 2026 21:00:00 +0500

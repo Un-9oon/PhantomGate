@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export GOPATH = $(CURDIR)/.go
+export GOCACHE = $(CURDIR)/.cache
+
+VERSION = 1.0.0
+LDFLAGS = -ldflags "-s -w -X main.version=$(VERSION)"
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	go build $(LDFLAGS) -o phantomgate ./cmd/phantomgate
+
+override_dh_auto_test:
+	go test ./...
+
+override_dh_auto_install:
+	install -D -m 0755 phantomgate $(CURDIR)/debian/phantomgate/usr/bin/phantomgate
+	# Install phishlets
+	install -d $(CURDIR)/debian/phantomgate/usr/share/phantomgate/phishlets
+	install -m 0644 phishlets/*.yml $(CURDIR)/debian/phantomgate/usr/share/phantomgate/phishlets/
+	# Install default config
+	install -D -m 0644 config.yml $(CURDIR)/debian/phantomgate/etc/phantomgate/config.yml
+	# Install man page
+	install -D -m 0644 debian/phantomgate.1 $(CURDIR)/debian/phantomgate/usr/share/man/man1/phantomgate.1
+
+override_dh_auto_clean:
+	rm -f phantomgate
+	rm -rf .go .cache
