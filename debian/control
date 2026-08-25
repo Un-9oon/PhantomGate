@@ -13,15 +13,29 @@ Architecture: amd64
 Depends: ${misc:Depends}, iptables, iproute2
 Recommends: hostapd, dnsmasq, arping, iw
 Description: Adversary-in-the-Middle reverse proxy framework for red teams
- PhantomGate is a precision-engineered AiTM reverse proxy that transparently
- sits between a victim and a real authentication portal (Microsoft 365,
- GitHub, Google, etc.). It captures credentials, intercepts MFA tokens,
- and steals authenticated session cookies in real-time.
+ PhantomGate is a next-generation AiTM reverse proxy framework designed
+ for authorized penetration testing and Red Team engagements. It combines
+ advanced network-level MITM attacks with application-level session
+ hijacking capabilities rivaling Bettercap and Evilginx2.
  .
- Features include YAML-based phishlet system, Metasploit-style terminal
- interface with animated banners and real-time status, ARP+DNS poisoning
- for LAN interception, rogue AP creation, dynamic CA certificate generation,
- shell completions (bash/zsh/fish), systemd service, and dry-run validation.
+ Core Features:
+  * 27 YAML-based phishlets (M365, Google, GitHub, LinkedIn, etc.)
+  * Metasploit-style terminal with animated banners and real-time status
+  * Advanced ARP poisoning with multi-target bidirectional spoofing
+  * DNS attack suite: rebinding, wildcard poisoning, tunneling, cache poisoning
+  * DoH bypass to force browsers back to regular DNS
+  * Rogue AP creation with NAT for wireless attacks
+  * BLE attack framework (scan, sniff, inject, spoof)
+  * HID keyboard/mouse injection for USB attacks
+  * Packet filtering engine with rule-based injection
+  * Character-by-character keystroke injection
+  * Plugin ecosystem with Go plugin loader
+  * REST API server with authentication
+  * Session replay and cookie hijacking
+  * BotGuard and fingerprint evasion
+  * Dynamic CA certificate generation
+  * Shell completions (bash/zsh/fish)
+  * Systemd service support
  .
  WARNING: This tool is designed exclusively for authorized penetration
- testing and Red Team engagements.
+ testing and Red Team engagements. Unauthorized use is illegal.

@@ -1,3 +1,26 @@
+phantomgate (3.1.0-1) unstable; urgency=medium
+
+  * v3.1.0: DNS attack suite + custom icon
+  * DNS Tunneling for data exfiltration
+  * DNS Cache Poisoning module
+  * DNS Rebinding attacks
+  * Wildcard DNS poisoning
+  * Enhanced DoH bypass
+  * Advanced ARP poisoning (multi-target, bidirectional)
+  * BLE attack framework
+  * HID keyboard/mouse injection
+  * Packet filtering engine
+  * Character-by-character injection
+  * Plugin ecosystem with Go loader
+  * REST API server with authentication
+  * Session replay and cookie hijacking
+  * BotGuard evasion
+  * 27 phishlets (M365, Google, GitHub, LinkedIn, etc.)
+  * Custom SVG/PNG icon for desktop
+  * Shell completions (bash/zsh/fish)
+
+ -- Un-9oon <un9oon@protonmail.com>  Tue, 26 Aug 2026 01:30:00 +0500
+
 phantomgate (1.0.0-1) unstable; urgency=medium
 
   * Initial release.

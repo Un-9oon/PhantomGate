@@ -25,7 +25,7 @@ import (
 	"github.com/phantomgate/phantomgate/internal/store"
 )
 
-var version = "1.1.0"
+var version = "3.1.0"
 
 func shellCompletionScript(shell string) string {
 	switch shell {
