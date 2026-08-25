@@ -1,10 +1,10 @@
 #!/usr/bin/make -f
 
 export DH_VERBOSE = 1
-export GOPATH = $(CURDIR)/.go
-export GOCACHE = $(CURDIR)/.cache
+export GOPATH = $(CURDIR)/debian/go
+export GOCACHE = $(CURDIR)/debian/.cache
 
-VERSION = 1.0.0
+VERSION = 1.1.0
 LDFLAGS = -ldflags "-s -w -X main.version=$(VERSION)"
 
 %:
@@ -17,15 +17,24 @@ override_dh_auto_test:
 	go test ./...
 
 override_dh_auto_install:
+	# Binary
 	install -D -m 0755 phantomgate $(CURDIR)/debian/phantomgate/usr/bin/phantomgate
-	# Install phishlets
+	# Phishlets
 	install -d $(CURDIR)/debian/phantomgate/usr/share/phantomgate/phishlets
 	install -m 0644 phishlets/*.yml $(CURDIR)/debian/phantomgate/usr/share/phantomgate/phishlets/
-	# Install default config
+	# Default config
 	install -D -m 0644 config.yml $(CURDIR)/debian/phantomgate/etc/phantomgate/config.yml
-	# Install man page
+	# Man page
 	install -D -m 0644 debian/phantomgate.1 $(CURDIR)/debian/phantomgate/usr/share/man/man1/phantomgate.1
+	# Shell completions
+	install -D -m 0644 completions/phantomgate.bash $(CURDIR)/debian/phantomgate/usr/share/bash-completion/completions/phantomgate
+	install -D -m 0644 completions/phantomgate.zsh $(CURDIR)/debian/phantomgate/usr/share/zsh/vendor-completions/_phantomgate
+	install -D -m 0644 completions/phantomgate.fish $(CURDIR)/debian/phantomgate/usr/share/fish/vendor_completions.d/phantomgate.fish
+	# Systemd service
+	install -D -m 0644 systemd/phantomgate.service $(CURDIR)/debian/phantomgate/lib/systemd/system/phantomgate.service
+	# Create data directory
+	install -d $(CURDIR)/debian/phantomgate/var/lib/phantomgate
 
 override_dh_auto_clean:
 	rm -f phantomgate
-	rm -rf .go .cache
+	rm -rf $(CURDIR)/debian/go $(CURDIR)/debian/.cache

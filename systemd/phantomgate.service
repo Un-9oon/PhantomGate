@@ -1,0 +1,28 @@
+[Unit]
+Description=PhantomGate AiTM Reverse Proxy Framework
+Documentation=https://github.com/Un-9oon/PhantomGate
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/phantomgate --config /etc/phantomgate/config.yml
+WorkingDirectory=/etc/phantomgate
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+# Security hardening (limited since tool needs root for ports/ARP)
+NoNewPrivileges=false
+ProtectSystem=false
+ProtectHome=false
+ReadWritePaths=/etc/phantomgate /var/lib/phantomgate
+
+# Capabilities needed for raw sockets and low ports
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

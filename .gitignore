@@ -24,6 +24,7 @@ debian/phantomgate/
 debian/files
 debian/*.debhelper
 debian/*.substvars
+debian/go/
 *.deb
 *.buildinfo
 *.changes

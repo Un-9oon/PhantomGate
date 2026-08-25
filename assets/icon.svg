@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6B46C1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="url(#grad1)" opacity="0.9"/>
+  
+  <!-- Ghost body -->
+  <path d="M128 40 C90 40 60 70 60 108 L60 180 C60 185 65 190 70 188 L85 185 C90 183 95 185 100 188 L115 191 C120 193 125 193 128 193 C131 193 136 193 141 191 L156 188 C161 185 166 183 171 185 L186 188 C191 190 196 185 196 180 L196 108 C196 70 166 40 128 40 Z" 
+        fill="white" filter="url(#glow)"/>
+  
+  <!-- Ghost eyes -->
+  <ellipse cx="105" cy="100" rx="12" ry="15" fill="#1a1a2e"/>
+  <ellipse cx="151" cy="100" rx="12" ry="15" fill="#1a1a2e"/>
+  
+  <!-- Eye shine -->
+  <ellipse cx="108" cy="95" rx="4" ry="5" fill="white"/>
+  <ellipse cx="154" cy="95" rx="4" ry="5" fill="white"/>
+  
+  <!-- Ghost mouth -->
+  <ellipse cx="128" cy="140" rx="8" ry="6" fill="#1a1a2e"/>
+  
+  <!-- Bottom waves (ghost tail) -->
+  <path d="M70 180 Q85 195 100 188 Q115 181 128 193 Q141 205 156 188 Q171 171 186 188" 
+        stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

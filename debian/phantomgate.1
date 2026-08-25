@@ -1,4 +1,4 @@
-.TH PHANTOMGATE 1 "August 2026" "1.0.0" "PhantomGate Manual"
+.TH PHANTOMGATE 1 "August 2026" "1.1.0" "PhantomGate Manual"
 .SH NAME
 phantomgate \- Adversary-in-the-Middle reverse proxy framework for red teams
 .SH SYNOPSIS
@@ -10,9 +10,14 @@ is an AiTM reverse proxy that transparently sits between a victim and a real
 authentication portal. It captures credentials, intercepts MFA tokens, and
 steals authenticated session cookies in real-time.
 .PP
+Features include YAML-based phishlet system, real-time operator dashboard,
+ARP+DNS poisoning for LAN interception, rogue AP creation, dynamic CA
+certificate generation, and captive portal for CA distribution.
+.PP
 \fBWARNING:\fR This tool is designed \fBexclusively\fR for authorized
 penetration testing and Red Team engagements. Unauthorized use is illegal.
 .SH OPTIONS
+.SS Core Options
 .TP
 .BI \-\-domain " DOMAIN"
 Phishing domain name (required). Example: login-secure.com
@@ -26,6 +31,9 @@ Directory containing phishlet YAML files. Default: /usr/share/phantomgate/phishl
 .BI \-\-config " FILE"
 Path to config file. Default: /etc/phantomgate/config.yml
 .TP
+.BI \-\-listen " IP"
+IP to bind listeners on. Default: 0.0.0.0
+.TP
 .BI \-\-https\-port " PORT"
 HTTPS proxy listener port. Default: 443
 .TP
@@ -36,13 +44,33 @@ HTTP redirect listener port. Default: 80
 Operator dashboard port. Default: 8443
 .TP
 .BI \-\-admin\-pass " PASSWORD"
-Dashboard authentication password (required).
+Dashboard authentication password (required). Minimum 8 characters recommended.
 .TP
 .BI \-\-store " FILE"
 Path for persistent data storage. Default: phantomgate_data.json
 .TP
+.BI \-\-cert " FILE"
+TLS certificate file (PEM) for manual TLS mode.
+.TP
+.BI \-\-key " FILE"
+TLS private key file (PEM) for manual TLS mode.
+.SS Phishlet Management
+.TP
+.B \-\-list
+List available phishlets and exit.
+.TP
+.BI \-\-lure " INFO"
+Create a lure URL for the specified victim info and print it.
+.SS Network Interception
+.TP
 .B \-\-intercept
 Enable DNS interception mode (ARP + DNS poisoning on LAN).
+.TP
+.B \-\-wizard
+Launch interactive wizard for LAN interception setup.
+.TP
+.BI \-\-iface " NAME"
+Network interface for interception. Default: eth0
 .TP
 .BI \-\-gateway " IP"
 Gateway IP for ARP poisoning.
@@ -50,36 +78,70 @@ Gateway IP for ARP poisoning.
 .BI \-\-victim\-ip " IPS"
 Comma-separated victim IPs (empty = entire subnet).
 .TP
-.B \-\-wizard
-Launch interactive wizard for LAN interception setup.
+.BI \-\-poison\-domain " DOMAINS"
+Comma-separated domains to poison (e.g., instagram.com,facebook.com).
+.SS Rogue Access Point
 .TP
 .B \-\-rogue\-ap
-Create a rogue WiFi access point.
+Create a rogue WiFi access point (bypasses AP isolation).
 .TP
 .BI \-\-ap\-ssid " SSID"
 SSID for the rogue AP. Default: Free_WiFi
+.TP
+.BI \-\-ap\-pass " PASSWORD"
+WPA2 password for rogue AP (empty = open network).
+.TP
+.BI \-\-ap\-channel " CHANNEL"
+WiFi channel for rogue AP. Default: 6
+.TP
+.BI \-\-ap\-iface " NAME"
+WiFi interface for AP (auto-detected if empty).
+.SS Dynamic CA & TLS
 .TP
 .B \-\-use\-ca
 Generate dynamic TLS certificates signed by a local CA.
 .TP
 .B \-\-captive\-portal
 Enable captive portal for CA cert distribution.
+.SS Operational
 .TP
-.B \-\-list
-List available phishlets and exit.
+.B \-\-dry\-run
+Test configuration without binding ports. Validates settings and exits.
+.TP
+.B \-\-json\-log
+Enable JSON structured logging (for SIEM integration).
+.TP
+.BI \-\-generate\-completions " SHELL"
+Generate shell completion script. Supported: bash, zsh, fish.
 .TP
 .B \-\-version
 Print version and exit.
+.SH SIGNALS
+.TP
+.B SIGUSR1
+Dump live statistics (victim count, credentials, sessions) to stdout.
+.TP
+.B SIGUSR2
+Rotate data store: backup current data, reset to fresh capture.
 .SH EXAMPLES
 .TP
 Standard deployment:
 .B sudo phantomgate \-\-domain login-secure.com \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss
 .TP
+With dynamic CA (no cert warnings):
+.B sudo phantomgate \-\-domain login-secure.com \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-use\-ca
+.TP
 LAN interception with wizard:
 .B sudo phantomgate \-\-domain test.local \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-wizard
 .TP
-Rogue AP mode:
-.B sudo phantomgate \-\-domain test.local \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-rogue-ap
+Rogue AP with captive portal:
+.B sudo phantomgate \-\-domain test.local \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-rogue\-ap
+.TP
+Validate configuration:
+.B phantomgate \-\-domain login-secure.com \-\-phishlet microsoft365 \-\-admin-pass SecureP@ss \-\-dry\-run
+.TP
+Generate bash completions:
+.B phantomgate \-\-generate\-completions bash > /etc/bash_completion.d/phantomgate
 .SH FILES
 .TP
 .I /etc/phantomgate/config.yml
@@ -87,6 +149,22 @@ Default configuration file.
 .TP
 .I /usr/share/phantomgate/phishlets/
 Default phishlet directory.
+.TP
+.I /usr/share/bash\-completion/completions/phantomgate
+Bash completion script.
+.TP
+.I /usr/share/zsh/vendor\-completions/_phantomgate
+Zsh completion script.
+.TP
+.I /usr/share/fish/vendor_completions.d/phantomgate.fish
+Fish completion script.
+.TP
+.I /lib/systemd/system/phantomgate.service
+Systemd service unit file.
+.SH HEALTH CHECK
+The operator dashboard exposes a health endpoint at /health (no auth required):
+.PP
+.B curl http://localhost:8443/health
 .SH BUGS
 Report bugs at: https://github.com/Un-9oon/PhantomGate/issues
 .SH AUTHOR

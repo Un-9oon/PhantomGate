@@ -18,9 +18,10 @@ Description: Adversary-in-the-Middle reverse proxy framework for red teams
  GitHub, Google, etc.). It captures credentials, intercepts MFA tokens,
  and steals authenticated session cookies in real-time.
  .
- Features include YAML-based phishlet system, real-time operator dashboard,
- ARP+DNS poisoning for LAN interception, rogue AP creation, dynamic CA
- certificate generation, and captive portal for CA distribution.
+ Features include YAML-based phishlet system, Metasploit-style terminal
+ interface with animated banners and real-time status, ARP+DNS poisoning
+ for LAN interception, rogue AP creation, dynamic CA certificate generation,
+ shell completions (bash/zsh/fish), systemd service, and dry-run validation.
  .
  WARNING: This tool is designed exclusively for authorized penetration
  testing and Red Team engagements.

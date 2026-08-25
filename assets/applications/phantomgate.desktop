@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=PhantomGate
+Comment=Advanced Phishing Framework
+Exec=/usr/bin/phantomgate --console
+Icon=phantomgate
+Terminal=true
+Type=Application
+Categories=Security;Network;
+StartupNotify=true

