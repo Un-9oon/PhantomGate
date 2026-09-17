@@ -1,7 +1,7 @@
 Source: phantomgate
 Section: net
 Priority: optional
-Maintainer: Un-9oon <un9oon@protonmail.com>
+Maintainer: Un-9oon <Un-9oon@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), golang-go (>= 1.23)
 Standards-Version: 4.6.2
 Homepage: https://github.com/Un-9oon/PhantomGate
