@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="325" viewBox="0 0 453 325"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
+<polyline points="225.0,45 225.0,80" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="214.0" y="53.5" width="22" height="12" fill="white"/><text x="225.0" y="62.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">ready</text>
+<polyline points="225.0,115 225.0,150" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="207.4" y="123.5" width="35.2" height="12" fill="white"/><text x="225.0" y="132.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">metadata</text>
+<polyline points="225.0,185 225.0,220" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="211.8" y="193.5" width="26.400000000000002" height="12" fill="white"/><text x="225.0" y="202.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">queued</text>
+<polyline points="150,167.5 110,167.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="110.2" y="158.5" width="39.6" height="12" fill="white"/><text x="130.0" y="167.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">saturated</text>
+<polyline points="225.0,255 225.0,290" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="192.0" y="263.5" width="66.0" height="12" fill="white"/><text x="225.0" y="272.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">terminal / idle</text>
+<polyline points="300,307.5 343,307.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="288.5" y="298.5" width="66.0" height="12" fill="white"/><text x="321.5" y="307.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">evidence-linked</text>
+<polyline points="300,308 316,308 316,168 300,168" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="291.8" y="229.0" width="48.400000000000006" height="12" fill="white"/><text x="316.0" y="238.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">next window</text>
+<rect x="150" y="10" width="150" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.0" y="30.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Validate scoped run</text>
+<rect x="150" y="80" width="150" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.0" y="100.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Forward lab interaction</text>
+<rect x="150" y="150" width="150" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.0" y="170.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Emit sanitized events</text>
+<rect x="150" y="220" width="150" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.0" y="240.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Close bounded window</text>
+<rect x="150" y="290" width="150" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.0" y="310.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Diagnose and persist</text>
+<rect x="0" y="150" width="110" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="55.0" y="170.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Queue full: mark loss</text>
+<rect x="343" y="290" width="110" height="35" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="398.0" y="310.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Operator review</text>
+</svg>

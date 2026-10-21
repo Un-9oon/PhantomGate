@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="330" viewBox="0 0 453 330"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
+<polyline points="226.5,70 68.0,120" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="120.85" y="86.0" width="52.800000000000004" height="12" fill="white"/><text x="147.25" y="95.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">approved run</text>
+<polyline points="226.5,70 226.0,120" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="199.85" y="86.0" width="52.800000000000004" height="12" fill="white"/><text x="226.25" y="95.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">pinned model</text>
+<polyline points="136,157.5 158,157.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="109.6" y="148.5" width="74.80000000000001" height="12" fill="white"/><text x="147.0" y="157.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">sanitized windows</text>
+<polyline points="68,120 68,98 385,98 385,120" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="202.3" y="89.0" width="48.400000000000006" height="12" fill="white"/><text x="226.5" y="98.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">lab traffic</text>
+<polyline points="68.0,195 68.0,255" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="35.0" y="216.0" width="66.0" height="12" fill="white"/><text x="68.0" y="225.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">durable records</text>
+<polyline points="384.5,195 384.5,255" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="355.9" y="216.0" width="57.2" height="12" fill="white"/><text x="384.5" y="225.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">truth records</text>
+<rect x="0" y="15" width="453" height="55" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="226.5" y="39.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Research workstation</text>
+<text x="226.5" y="51.199999999999996" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Operator interface + separate training/evaluation environment</text>
+<rect x="0" y="120" width="136" height="75" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="68.0" y="149.1" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Go proxy process</text>
+<text x="68.0" y="160.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Sanitizer + queue</text>
+<text x="68.0" y="171.9" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Window worker</text>
+<rect x="158" y="120" width="136" height="75" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="226.0" y="149.1" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Local Python service</text>
+<text x="226.0" y="160.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Read-only model</text>
+<text x="226.0" y="171.9" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">No target-network route</text>
+<rect x="316" y="120" width="137" height="75" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="384.5" y="149.1" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Isolated lab network</text>
+<text x="384.5" y="160.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Synthetic apps A/B/C</text>
+<text x="384.5" y="171.9" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Synthetic browser</text>
+<rect x="0" y="255" width="136" height="65" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="68.0" y="279.1" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Evidence store</text>
+<text x="68.0" y="290.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Redacted events</text>
+<text x="68.0" y="301.90000000000003" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Diagnoses + audit</text>
+<rect x="316" y="255" width="137" height="65" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="384.5" y="279.1" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Research-only oracle</text>
+<text x="384.5" y="290.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">App truth + verified</text>
+<text x="384.5" y="301.90000000000003" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">fault-injection record</text>
+</svg>

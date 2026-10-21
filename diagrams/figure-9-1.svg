@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="185"><rect width="100%" height="100%" fill="white"/>
+<text x="138" y="15" text-anchor="middle" font-family="Arial" font-size="8">1</text>
+<text x="164" y="15" text-anchor="middle" font-family="Arial" font-size="8">2</text>
+<text x="190" y="15" text-anchor="middle" font-family="Arial" font-size="8">3</text>
+<text x="216" y="15" text-anchor="middle" font-family="Arial" font-size="8">4</text>
+<text x="242" y="15" text-anchor="middle" font-family="Arial" font-size="8">5</text>
+<text x="268" y="15" text-anchor="middle" font-family="Arial" font-size="8">6</text>
+<text x="294" y="15" text-anchor="middle" font-family="Arial" font-size="8">7</text>
+<text x="320" y="15" text-anchor="middle" font-family="Arial" font-size="8">8</text>
+<text x="346" y="15" text-anchor="middle" font-family="Arial" font-size="8">9</text>
+<text x="372" y="15" text-anchor="middle" font-family="Arial" font-size="8">10</text>
+<text x="398" y="15" text-anchor="middle" font-family="Arial" font-size="8">11</text>
+<text x="424" y="15" text-anchor="middle" font-family="Arial" font-size="8">12</text>
+<text x="0" y="39" font-family="Arial" font-size="8">Scope + literature</text>
+<rect x="125" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="151" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="203" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="255" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="307" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="359" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="411" y="26" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="125" y="27" width="52" height="17" fill="#176B91"/>
+<text x="0" y="64" font-family="Arial" font-size="8">Telemetry + oracle</text>
+<rect x="125" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="151" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="203" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="255" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="307" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="359" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="411" y="51" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="52" width="52" height="17" fill="#176B91"/>
+<text x="0" y="89" font-family="Arial" font-size="8">Dataset + rules</text>
+<rect x="125" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="151" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="203" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="255" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="307" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="359" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="411" y="76" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="77" width="52" height="17" fill="#176B91"/>
+<text x="0" y="114" font-family="Arial" font-size="8">Train + embed</text>
+<rect x="125" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="151" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="203" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="255" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="307" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="359" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="411" y="101" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="102" width="52" height="17" fill="#176B91"/>
+<text x="0" y="139" font-family="Arial" font-size="8">Evaluate + harden</text>
+<rect x="125" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="151" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="203" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="255" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="307" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="359" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="411" y="126" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="127" width="52" height="17" fill="#176B91"/>
+<text x="0" y="164" font-family="Arial" font-size="8">Report + handover</text>
+<rect x="125" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="151" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="177" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="203" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="229" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="255" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="281" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="307" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="333" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="359" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="411" y="151" width="26" height="19" fill="white" stroke="#D7E0E5"/>
+<rect x="385" y="152" width="52" height="17" fill="#176B91"/>
+</svg>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="320" viewBox="0 0 453 320"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
+<polyline points="110,160.0 145,162.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="103.3" y="152.25" width="48.400000000000006" height="12" fill="white"/><text x="127.5" y="161.25" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">scope + run</text>
+<polyline points="310,150 345,150" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="292.3" y="141.0" width="70.4" height="12" fill="white"/><text x="327.5" y="150.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">proxied response</text>
+<polyline points="345,180 310,180" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="303.3" y="171.0" width="48.400000000000006" height="12" fill="white"/><text x="327.5" y="180.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">lab traffic</text>
+<polyline points="200,65 200,125" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="171.4" y="86.0" width="57.2" height="12" fill="white"/><text x="200.0" y="95.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">trained model</text>
+<polyline points="255,125 255,65" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="219.8" y="86.0" width="70.4" height="12" fill="white"/><text x="255.0" y="95.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">redacted dataset</text>
+<polyline points="227.5,200 227.5,265" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="183.5" y="223.5" width="88.0" height="12" fill="white"/><text x="227.5" y="232.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">predictions + report</text>
+<rect x="0" y="135" width="110" height="50" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="55.0" y="163.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Operator / supervisor</text>
+<rect x="145" y="125" width="165" height="75" rx="37.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="227.5" y="159.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">0. PhantomGate-AI</text>
+<text x="227.5" y="171.20000000000002" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Reverse proxy + assistant</text>
+<rect x="345" y="135" width="108" height="50" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="399.0" y="163.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Lab browser / app</text>
+<rect x="145" y="20" width="165" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="227.5" y="45.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Researcher / model curator</text>
+<rect x="145" y="265" width="165" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="227.5" y="290.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Examiner / evaluator</text>
+</svg>
