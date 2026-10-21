@@ -1,0 +1,60 @@
+{
+  "spec_version": "3.0",
+  "prepared": "2026-10-22",
+  "project_name": "PhantomGate-AI",
+  "core_system": "Existing Go reverse proxy",
+  "assistant_role": "Read-only authentication-outcome and technical-failure diagnosis from sanitized proxy telemetry",
+  "implementation_status": "Design proposal; new modules, models and evaluation not implemented by this documentation revision",
+  "baseline": {"repository": "Un-9oon/PhantomGate", "code_commit": "8ae8437a4900b03fbaf187ac98bbde6127687efa"},
+  "supersedes": "Revision 2.0 next-action-selection agent",
+  "research_question": "Can a trained model distinguish authentication outcomes and technical failures on unseen lab applications more accurately than strong rules at bounded overhead?",
+  "novelty_status": "Candidate contribution; requires broader literature review and measured evaluation",
+  "invariants": [
+    "Reverse proxy remains central",
+    "No inference wait in request forwarding",
+    "Sanitize by allowlist before enqueueing",
+    "No oracle access during runtime inference",
+    "Predictions are not independently verified security findings",
+    "No autonomous target selection, payload delivery, routing changes or command execution",
+    "No unmeasured accuracy, novelty, robustness or certification claims"
+  ],
+  "environment": {"targets": "Synthetic lab-owned applications and accounts", "external_egress": "Denied by default", "model_service": "Local or isolated; no route to target network"},
+  "proposed_modules": ["internal/telemetry", "internal/diagnosis", "internal/evidence", "ai", "lab", "evaluation"],
+  "outcome_labels": ["COMPLETE", "REJECTED", "INCOMPLETE", "UNKNOWN"],
+  "failure_labels": ["NONE", "PROXY", "UPSTREAM", "CLIENT", "UNKNOWN"],
+  "prediction_statuses": ["PREDICTED", "ABSTAINED", "UNAVAILABLE", "INVALID_INPUT"],
+  "event_schema": {
+    "version": "pg.telemetry.v1",
+    "required_fields": {"schema_version": "string constant", "run_id": "opaque string", "flow_id": "opaque string", "event_id": "unique opaque string", "sequence": "non-negative integer", "elapsed_ms": "non-negative finite number", "kind": "enumerated string"},
+    "optional_fields": {"status_class": "1xx|2xx|3xx|4xx|5xx|unknown", "error_code": "NONE|CONNECT_TIMEOUT|READ_TIMEOUT|CONNECTION_CLOSED|LOCAL_PROXY_ERROR|UNKNOWN", "size_bucket": "bounded category", "content_type": "allowlisted category"},
+    "event_kinds": ["request_started", "upstream_response", "proxy_error", "connection_closed", "flow_closed"],
+    "forbidden_fields": ["password", "body", "cookie_values", "session_tokens", "authorization_header", "raw_url", "query_string", "raw_headers", "raw_error_text", "user_identity", "oracle_label", "fault_injection_id", "scenario_id"],
+    "unknown_fields": "Reject; do not silently persist",
+    "ids_are_predictive_features": false
+  },
+  "window_schema": {
+    "version": "pg.window.v1",
+    "fields": ["schema_version", "run_id", "flow_id", "window_id", "events", "closure_reason", "dropped_event_count", "correlation_ambiguous"],
+    "closure_reasons": ["OBSERVED_TERMINAL", "IDLE_TIMEOUT", "MAX_AGE", "MAX_EVENTS", "CANCELLED"],
+    "late_event_policy": "New linked window; preserve old prediction",
+    "missingness_is_authentication_rejection": false
+  },
+  "model_api": {
+    "diagnose": {"method": "POST", "path": "/v1/diagnose", "input": ["schema_version", "model_id", "window"], "output_schema": "pg.diagnosis.v1"},
+    "liveness": {"method": "GET", "path": "/healthz"},
+    "readiness": {"method": "GET", "path": "/readyz"}
+  },
+  "diagnosis_schema": {
+    "version": "pg.diagnosis.v1",
+    "fields": ["schema_version", "model_id", "flow_id", "window_id", "status", "predicted_outcome", "predicted_failure", "outcome_confidence", "failure_confidence", "abstain_reason", "evidence_event_ids"],
+    "confidence_rule": "Finite probability in [0,1] when present; null for UNAVAILABLE or INVALID_INPUT",
+    "evidence_rule": "Every referenced event exists in the input window",
+    "example_not_measured": {"schema_version": "pg.diagnosis.v1", "model_id": "demo-model", "flow_id": "lab-flow-001", "window_id": "window-001", "status": "ABSTAINED", "predicted_outcome": "UNKNOWN", "predicted_failure": "UNKNOWN", "outcome_confidence": null, "failure_confidence": null, "abstain_reason": "MISSING_TERMINAL_EVIDENCE", "evidence_event_ids": ["e01", "e03"]}
+  },
+  "provisional_defaults": {"enabled": false, "service_url": "http://127.0.0.1:8765", "queue_capacity": 10000, "max_events_per_window": 256, "max_window_age_seconds": 60, "idle_timeout_seconds": 5, "inference_deadline_ms": 250, "max_retries": 1},
+  "degradation": {"model_down": "UNAVAILABLE; no forwarding dependency", "queue_full": "Non-blocking loss counter; affected window incomplete", "schema_mismatch": "INVALID_INPUT", "ambiguous_correlation": "Unknown/unassigned; never join users", "storage_failure": "Explicit degraded status; no invented evidence"},
+  "training": {"models": ["logistic regression", "gradient-boosted trees"], "optional_extension": "small sequence model if justified", "labels": "Independent app oracle and verified lab fault provenance", "oracle_is_feature": false, "preprocessing_fit": "training groups only", "calibration": "validation groups only"},
+  "evaluation": {"baselines": ["majority", "explicit rules", "logistic regression", "gradient-boosted trees"], "split": "Application holdout; group flows, near-duplicates, scenario families and collection periods", "metrics": ["per-class precision/recall", "macro-F1", "joint correctness", "calibration", "risk versus coverage", "proxy p50/p95/p99", "throughput", "CPU/RAM", "drop rate"], "results": "Not measured"},
+  "milestones": ["M1 baseline and synthetic fixture", "M2 telemetry and sanitizer", "M3 windows, oracle, rules and persistence", "M4 dataset and trained models", "M5 embedded assistant", "M6 evaluation and reliability evidence"],
+  "acceptance_tests": ["T01 forwarding regression", "T02 secret exclusion", "T03 non-blocking saturation", "T04 flow isolation", "T05 oracle isolation", "T06 outage behavior", "T07 evidence references", "T08 split audit", "T09 crash recovery", "T10 cancellation and drain"]
+}

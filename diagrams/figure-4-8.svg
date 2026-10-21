@@ -1,35 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="453" height="360"><rect width="100%" height="100%" fill="white"/>
 <rect x="2" y="15" width="76" height="30" rx="3" fill="#EDF4F7" stroke="#176B91"/>
-<text x="40" y="33" text-anchor="middle" font-family="Arial" font-size="8">Operator</text>
+<text x="40" y="33" text-anchor="middle" font-family="Arial" font-size="8">Browser</text>
 <line x1="40" y1="50" x2="40" y2="350" stroke="#176B91" stroke-dasharray="3 3"/>
 <rect x="97" y="15" width="76" height="30" rx="3" fill="#EDF4F7" stroke="#176B91"/>
-<text x="135" y="33" text-anchor="middle" font-family="Arial" font-size="8">Orchestrator</text>
+<text x="135" y="33" text-anchor="middle" font-family="Arial" font-size="8">Go proxy</text>
 <line x1="135" y1="50" x2="135" y2="350" stroke="#176B91" stroke-dasharray="3 3"/>
 <rect x="192" y="15" width="76" height="30" rx="3" fill="#EDF4F7" stroke="#176B91"/>
-<text x="230" y="33" text-anchor="middle" font-family="Arial" font-size="8">Policy / gate</text>
+<text x="230" y="33" text-anchor="middle" font-family="Arial" font-size="8">Worker</text>
 <line x1="230" y1="50" x2="230" y2="350" stroke="#176B91" stroke-dasharray="3 3"/>
 <rect x="287" y="15" width="76" height="30" rx="3" fill="#EDF4F7" stroke="#176B91"/>
-<text x="325" y="33" text-anchor="middle" font-family="Arial" font-size="8">Lab runner</text>
+<text x="325" y="33" text-anchor="middle" font-family="Arial" font-size="8">AI service</text>
 <line x1="325" y1="50" x2="325" y2="350" stroke="#176B91" stroke-dasharray="3 3"/>
 <rect x="382" y="15" width="76" height="30" rx="3" fill="#EDF4F7" stroke="#176B91"/>
-<text x="420" y="33" text-anchor="middle" font-family="Arial" font-size="8">Verifier</text>
+<text x="420" y="33" text-anchor="middle" font-family="Arial" font-size="8">Evidence</text>
 <line x1="420" y1="50" x2="420" y2="350" stroke="#176B91" stroke-dasharray="3 3"/>
 <path d="M 40 73 H 135 M 130 70 L 135 73 L 130 76" fill="none" stroke="#176B91"/>
-<text x="87.5" y="67" text-anchor="middle" font-family="Arial" font-size="7.5">Start approved run</text>
-<path d="M 135 103 H 230 M 225 100 L 230 103 L 225 106" fill="none" stroke="#176B91"/>
-<text x="182.5" y="97" text-anchor="middle" font-family="Arial" font-size="7.5">Rank permitted actions</text>
-<path d="M 230 133 H 135 M 140 130 L 135 133 L 140 136" fill="none" stroke="#176B91"/>
-<text x="182.5" y="127" text-anchor="middle" font-family="Arial" font-size="7.5">Action ID + confidence</text>
-<path d="M 135 163 H 230 M 225 160 L 230 163 L 225 166" fill="none" stroke="#176B91"/>
-<text x="182.5" y="157" text-anchor="middle" font-family="Arial" font-size="7.5">Authorize current action</text>
-<path d="M 230 193 H 135 M 140 190 L 135 193 L 140 196" fill="none" stroke="#176B91"/>
-<text x="182.5" y="187" text-anchor="middle" font-family="Arial" font-size="7.5">Permit or denial</text>
-<path d="M 135 223 H 325 M 320 220 L 325 223 L 320 226" fill="none" stroke="#176B91"/>
-<text x="230.0" y="217" text-anchor="middle" font-family="Arial" font-size="7.5">Execute if permitted</text>
-<path d="M 325 253 H 420 M 415 250 L 420 253 L 415 256" fill="none" stroke="#176B91"/>
-<text x="372.5" y="247" text-anchor="middle" font-family="Arial" font-size="7.5">Server evidence reference</text>
-<path d="M 420 283 H 135 M 140 280 L 135 283 L 140 286" fill="none" stroke="#176B91"/>
-<text x="277.5" y="277" text-anchor="middle" font-family="Arial" font-size="7.5">Confirmed / rejected / unknown</text>
-<path d="M 135 313 H 40 M 45 310 L 40 313 L 45 316" fill="none" stroke="#176B91"/>
-<text x="87.5" y="307" text-anchor="middle" font-family="Arial" font-size="7.5">Report after cleanup</text>
+<text x="87.5" y="67" text-anchor="middle" font-family="Arial" font-size="7.5">Synthetic lab request</text>
+<path d="M 135 103 H 40 M 45 100 L 40 103 L 45 106" fill="none" stroke="#176B91"/>
+<text x="87.5" y="97" text-anchor="middle" font-family="Arial" font-size="7.5">Forwarded app response</text>
+<path d="M 135 133 H 230 M 225 130 L 230 133 L 225 136" fill="none" stroke="#176B91"/>
+<text x="182.5" y="127" text-anchor="middle" font-family="Arial" font-size="7.5">Non-blocking sanitized event</text>
+<path d="M 230 163 H 325 M 320 160 L 325 163 L 320 166" fill="none" stroke="#176B91"/>
+<text x="277.5" y="157" text-anchor="middle" font-family="Arial" font-size="7.5">Closed observed window</text>
+<path d="M 325 193 H 230 M 235 190 L 230 193 L 235 196" fill="none" stroke="#176B91"/>
+<text x="277.5" y="187" text-anchor="middle" font-family="Arial" font-size="7.5">Prediction or abstention</text>
+<path d="M 230 223 H 420 M 415 220 L 420 223 L 415 226" fill="none" stroke="#176B91"/>
+<text x="325.0" y="217" text-anchor="middle" font-family="Arial" font-size="7.5">Persist diagnosis + evidence</text>
+<path d="M 230 253 H 420 M 415 250 L 420 253 L 415 256" fill="none" stroke="#176B91"/>
+<text x="325.0" y="247" text-anchor="middle" font-family="Arial" font-size="7.5">Outage: explicit unavailable</text>
+<path d="M 135 283 H 230 M 225 280 L 230 283 L 225 286" fill="none" stroke="#176B91"/>
+<text x="182.5" y="277" text-anchor="middle" font-family="Arial" font-size="7.5">Stop: bounded drain</text>
 </svg>

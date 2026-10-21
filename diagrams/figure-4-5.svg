@@ -1,32 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="453" height="325" viewBox="0 0 453 325"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
-<polyline points="95,42.5 142,42.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="103.1" y="33.5" width="30.800000000000004" height="12" fill="white"/><text x="118.5" y="42.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">approve</text>
-<polyline points="95,160.0 142,122.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="92.1" y="132.25" width="52.800000000000004" height="12" fill="white"/><text x="118.5" y="141.25" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">start / stop</text>
-<polyline points="225.5,65 225.5,100" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="199.1" y="73.5" width="52.800000000000004" height="12" fill="white"/><text x="225.5" y="82.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">precondition</text>
-<polyline points="225.5,145 225.5,180" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="207.9" y="153.5" width="35.2" height="12" fill="white"/><text x="225.5" y="162.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">includes</text>
-<polyline points="405.5,185 225.5,260" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="284.7" y="213.5" width="61.60000000000001" height="12" fill="white"/><text x="315.5" y="222.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">curate / train</text>
-<polyline points="225.5,225 405.5,260" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="282.5" y="233.5" width="66.0" height="12" fill="white"/><text x="315.5" y="242.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">review evidence</text>
-<polyline points="309,282.5 358,282.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
-<rect x="302.7" y="273.5" width="61.60000000000001" height="12" fill="white"/><text x="333.5" y="282.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">review metrics</text>
-<rect x="0" y="135" width="95" height="50" rx="4" fill="#FFF5ED" stroke="#176B91"/>
-<text x="47.5" y="163.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Student operator</text>
-<rect x="0" y="20" width="95" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
-<text x="47.5" y="45.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Supervisor</text>
-<rect x="358" y="135" width="95" height="50" rx="4" fill="#FFF5ED" stroke="#176B91"/>
-<text x="405.5" y="163.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Researcher</text>
-<rect x="358" y="260" width="95" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
-<text x="405.5" y="285.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Examiner</text>
-<rect x="142" y="20" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
-<text x="225.5" y="45.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC01 Approve lab scope</text>
-<rect x="142" y="100" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
-<text x="225.5" y="125.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC02 Run assessment</text>
-<rect x="142" y="180" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
-<text x="225.5" y="205.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC03 Validate findings</text>
-<rect x="142" y="260" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
-<text x="225.5" y="285.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC04 Train / evaluate policy</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="350" viewBox="0 0 453 350"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
+<rect x="120" y="25" width="214" height="325" fill="none" stroke="#52616D"/><text x="227" y="18" text-anchor="middle" font-family="Arial" font-size="8">PhantomGate-AI</text>
+<polyline points="58.5,65.5 142,67.5" fill="none" stroke="#176B91" stroke-width="1.1"/>
+<polyline points="58.5,183.0 142,147.5" fill="none" stroke="#176B91" stroke-width="1.1"/>
+<polyline points="58.5,183.0 142,227.5" fill="none" stroke="#176B91" stroke-width="1.1"/>
+<polyline points="394.5,183.0 225.5,285" fill="none" stroke="#176B91" stroke-width="1.1"/>
+<polyline points="225.5,250 394.5,305.5" fill="none" stroke="#176B91" stroke-width="1.1"/>
+<polyline points="309,307.5 394.5,305.5" fill="none" stroke="#176B91" stroke-width="1.1"/>
+<circle cx="47.5" cy="173.0" r="5" fill="white" stroke="#176B91"/><path d="M 47.5 178.0 V 192.0 M 37.5 183.0 H 57.5 M 47.5 192.0 L 38.5 202.0 M 47.5 192.0 L 56.5 202.0" fill="none" stroke="#176B91"/><text x="47.5" y="214.0" text-anchor="middle" font-family="Arial" font-size="8">Lab operator</text>
+<circle cx="47.5" cy="55.5" r="5" fill="white" stroke="#176B91"/><path d="M 47.5 60.5 V 74.5 M 37.5 65.5 H 57.5 M 47.5 74.5 L 38.5 84.5 M 47.5 74.5 L 56.5 84.5" fill="none" stroke="#176B91"/><text x="47.5" y="96.5" text-anchor="middle" font-family="Arial" font-size="8">Supervisor</text>
+<circle cx="405.5" cy="173.0" r="5" fill="white" stroke="#176B91"/><path d="M 405.5 178.0 V 192.0 M 395.5 183.0 H 415.5 M 405.5 192.0 L 396.5 202.0 M 405.5 192.0 L 414.5 202.0" fill="none" stroke="#176B91"/><text x="405.5" y="214.0" text-anchor="middle" font-family="Arial" font-size="8">Researcher</text>
+<circle cx="405.5" cy="295.5" r="5" fill="white" stroke="#176B91"/><path d="M 405.5 300.5 V 314.5 M 395.5 305.5 H 415.5 M 405.5 314.5 L 396.5 324.5 M 405.5 314.5 L 414.5 324.5" fill="none" stroke="#176B91"/><text x="405.5" y="336.5" text-anchor="middle" font-family="Arial" font-size="8">Examiner</text>
+<rect x="142" y="45" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.5" y="70.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC01 Approve scoped run</text>
+<rect x="142" y="125" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.5" y="150.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC02 Observe proxy run</text>
+<rect x="142" y="205" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.5" y="230.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC03 Review diagnosis</text>
+<rect x="142" y="285" width="167" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="225.5" y="310.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">UC04 Train and evaluate</text>
 </svg>

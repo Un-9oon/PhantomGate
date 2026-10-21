@@ -1,41 +1,35 @@
-# PhantomGate-Lab report source
+# PhantomGate-AI FYP report - revision 3.0
 
-This package revises the original PhantomGate technical handover into a final-year-project design proposal for **AI-Assisted Penetration Testing for Controlled Authentication Assessment**.
+Prepared 22 October 2026. This revision keeps the reverse proxy central and replaces the old next-action agent with an embedded, observational diagnostic assistant.
 
-The report contains 39 pages, 14 vector diagrams, 15 tables, a focused literature review, requirements, AI training and evaluation plans, reliability criteria, and appendices. It does not claim implementation of the proposed agent, trained models, completed experiments, institutional approval, or production readiness.
+## Read in this order
+
+1. `PhantomGate-Project-Report.pdf`: complete 43-page FYP design and handover.
+2. `docs/AI_HANDOVER.md`: implementation scope, code mapping, contracts and milestones.
+3. `PROJECT_SPEC.json`: machine-readable labels, interfaces, defaults and acceptance criteria.
+4. Actual code snapshot and repository instructions: verify existing behavior before editing.
+
+The PDF includes abstract, problem statement, proposed solution, literature review, candidate gap, architecture and data-flow diagrams, use/misuse cases, technical implementation, model training, evaluation, market-value hypothesis, conclusion, future work and AI implementation handover. There are 14 diagrams, 18 tables and 9 references. New runtime modules, model training and experiments remain proposed.
 
 ## Regenerate
 
-With Python 3 and the packages in `requirements.txt`:
-
-```bash
-python -m pip install -r requirements.txt
-python build_report.py --output-dir ..
-```
-
-In the repository, where this directory is stored as `reports/`:
+From the repository/package root:
 
 ```bash
 python -m pip install -r reports/requirements.txt
 python reports/build_report.py --output-dir .
 ```
 
-The generator writes `PhantomGate-Project-Report.pdf`, `PhantomGate-Project-Report.md`, and `diagrams/*.svg`. Edit the generator's content blocks to change both the formatted PDF and Markdown consistently. Editing the generated Markdown alone does not update the PDF.
+The generator writes the PDF, Markdown and `diagrams/*.svg`. Edit its content blocks to keep the PDF and Markdown in sync. It does not generate the handover or JSON specification; update those when changing the design.
 
-## Before academic submission
+## Checks performed for this revision
 
-- Insert actual team, registration, university, department, degree, supervisor, and session details.
-- Apply the institution's required template, approval text, and reference style.
-- Add acknowledgements and obtain actual signatures.
-- Replace the unmeasured-results section only after executing and documenting experiments.
-- Extend the focused related-work review before asserting publication-level novelty.
-- Attribute the original framework and identify student contributions accurately.
+- Reopened the PDF, checked page count and bookmarks.
+- Rendered all pages with Poppler and visually inspected layout, diagrams and tables.
+- Checked Markdown figure targets, XML validity of SVGs, JSON syntax and handover consistency.
+- Rechecked source symbols at the pinned code baseline and reviewed primary literature records.
+- No proxy runtime, training, penetration-testing or robustness experiments were run in this documentation revision.
 
-## Verification performed for this revision
+## Submission requirements
 
-- Reopened the generated PDF and confirmed 39 pages.
-- Rendered every page with Poppler and inspected the page layouts.
-- Checked figures, tables, page numbering, references, and SVG assets.
-- No application, model, penetration-testing, or robustness acceptance tests were run as part of this documentation change.
-
-Prepared: 21 October 2026. Original source baseline: `8ae8437a4900b03fbaf187ac98bbde6127687efa`.
+University template, team/registration details, supervisor, session, real approval signatures and acknowledgements were not supplied. Complete these before submission. The market section is qualitative and contains no invented market-size or revenue figures. Novelty is a candidate to validate, not a guaranteed claim. Replace unmeasured-result wording only with actual experimental evidence.

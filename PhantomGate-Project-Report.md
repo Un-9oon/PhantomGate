@@ -1,688 +1,765 @@
 
 # Title page
 
-**AI-Assisted Penetration Testing for Controlled Authentication Assessment**
-Revision 2.0 - Design proposal. Prepared 21 October 2026.
+**Reverse Proxy with an AI Assistant for Authentication Outcome and Failure Diagnosis**
+Revision 3.0 - FYP design and handover. Prepared 22 October 2026.
 Team, university, department, degree, supervisor and academic session: not supplied.
 
-# Declaration and approval
+# Declaration and document status
 
-This revised report documents a proposed final-year project combining Penetration Testing and Artificial Intelligence. It distinguishes the existing PhantomGate repository from the new AI-assisted laboratory assessment design. No experimental results, trained-model performance, institutional approval, or production certification are asserted.
+This final-year-project design report defines the current agreed scope of PhantomGate-AI: retain the existing reverse proxy as the main system and embed a separately trained assistant for evidence-grounded authentication-outcome and technical-failure diagnosis in controlled laboratories. It supersedes the earlier action-selection-agent report.
 
-## Student declaration
+## Declaration and attribution
 
-We declare that the final submission will identify third-party code and literature, document our own contributions, and report experiments accurately. This draft is unsigned and does not constitute a declaration by any named student.
+The original PhantomGate framework is an existing software foundation, not a new student invention. Students must identify reused code, their own instrumentation, dataset, trained model, reliability changes, evaluation, and writing assistance according to institutional policy. This draft is unsigned and does not assert approval or authorship by any named person.
 
 **Administrative details**
-| Field | To be completed before submission |
+| Field | Submission status |
 | --- | --- |
-| Student name(s) / registration ID(s) | Not supplied |
-| Degree / department / university | Not supplied |
-| Supervisor / co-supervisor | Not supplied |
-| Academic session / submission date | Not supplied |
-| Student signature(s) / date | Unsigned |
-| Supervisor / examiner approval | Pending institutional review |
-## Formatting and revision note
+| Student names / registration IDs | Not supplied |
+| University / department / degree | Not supplied |
+| Supervisor / academic session | Not supplied |
+| Declaration and approval signatures | Pending; obtain actual signatures |
+| Revision / prepared | 3.0 / 22 October 2026 |
+| Implementation and experiment status | Proposed; no trained-model results claimed |
+## Formatting and intended use
 
-Prepared on 21 October 2026 as a conventional A4 FYP design report. The institution has not supplied a template. Apply its required cover, binding margin, declarations, citation style, and approval wording before submission. Acknowledgements should be added by the students after confirming actual contributions.
+A conventional A4 FYP format is used because no institution template was supplied. Replace the cover and approval wording with the institution requirements. Add genuine acknowledgements before submission. The implementation handover chapter and companion PROJECT_SPEC.json are designed to make the scope understandable without reading this conversation.
 
 
 # Abstract
 
-PhantomGate-Lab proposes an AI-assisted penetration-testing agent for controlled authentication-security assessment. The project uses the existing Go-based PhantomGate framework as a laboratory component and adds a separately trained policy that selects from a predefined catalogue of bounded assessment actions. The central research question is whether a learned policy can discover more distinct, independently validated weaknesses than fixed and random test sequences under the same action budget on unseen laboratory configurations.
+PhantomGate-AI proposes an AI-assisted reverse-proxy framework for controlled authentication-security assessments. The existing Go reverse proxy remains the primary traffic-processing system. A non-blocking observation pipeline supplies sanitized event sequences to a student-trained diagnostic model. The assistant estimates authentication-flow outcomes and associated technical-failure categories, identifies insufficient evidence, and returns evidence-linked explanations for an operator. It does not control routing, generate payloads, select targets, or modify assessment authorization.
 
-The proposed system separates model recommendations from execution authorization. A deterministic scope gate checks every action, a laboratory runner interacts with synthetic applications, and an independent verifier produces ground-truth finding labels. Sanitized observations feed the policy; passwords, authentication-token values, scenario identifiers, and hidden vulnerability labels are excluded from model inputs. The initial learning approach is supervised action ranking using expert-labeled states, with logistic regression and gradient-boosted trees as candidate models.
+The research problem is the interpretation of incomplete and ambiguous laboratory observations: a failed interaction may reflect application rejection, proxy failure, upstream unavailability, client interruption, or insufficient telemetry. The proposed approach separates model predictions from ground truth obtained through independently instrumented synthetic applications and verified fault injections. Outcome and failure labels are modeled separately because an incomplete flow and a technical failure can coexist.
 
-Evaluation will use application-level and scenario-family holdouts, paired experiment seeds, coverage-versus-budget curves, finding precision, decision overhead, and model-abstention measures. Reliability work will address durable storage, immutable snapshots, explicit timeouts, graceful shutdown, bounded resources, auditability, and experiment reproducibility. Proposed outcomes are a testbed, a documented dataset, trained policies, a reproducible evaluation package, and evidence-linked reports. Novelty and robustness remain hypotheses until the literature gap and measured results support them.
+The evaluation compares explicit rules, logistic regression, gradient-boosted trees, and an optional small sequence model using application- and scenario-group holdouts. Measurements include per-class precision and recall, macro-F1, selective prediction risk, calibration, missing-event sensitivity, and added resource overhead. Conventional engineering work addresses timeouts, cancellation, storage durability, immutable snapshots, bounded queues, and shutdown. Expected deliverables are an enhanced reverse proxy, a trained assistant, a labeled laboratory benchmark, reproducible evaluations, and an implementation handover package. Novelty and robustness remain claims to validate, not established achievements.
 
 ## Keywords
 
-Penetration testing; artificial intelligence; supervised action ranking; authentication assessment; controlled laboratory; generalization; evidence validation.
+Reverse proxy; penetration-testing laboratory; authentication assessment; supervised learning; failure diagnosis; sanitized telemetry; uncertainty; cross-application evaluation.
 
-## Project status
+## One-sentence project identity
 
-Design and implementation proposal. This document revises the report only; it does not claim implementation of the proposed AI modules or completion of the evaluation.
+Keep PhantomGate as the reverse proxy; add a trained, read-only assistant that explains observed assessment outcomes using sanitized telemetry and independent verification.
 
 
 # Table of contents
 
 | Section | Page |
 | --- | --- |
-| Declaration and approval | i |
+| Declaration and document status | i |
 | Abstract | ii |
 | List of figures, tables and abbreviations | iv |
-| 1. Introduction | 1 |
-| 2. Literature review - review method | 3 |
-| 3. Requirements engineering | 6 |
-| 4. System design - architecture | 8 |
-| 5. AI methodology - learning formulation | 20 |
-| 6. Implementation and integration plan | 23 |
-| 7. Evaluation protocol | 25 |
-| 8. Project management and feasibility | 27 |
-| 9. Conclusion and expected deliverables | 29 |
-| References | 30 |
-| Appendix A. Validation and traceability matrix | 32 |
-| Appendix B. Detailed use and misuse specifications | 33 |
-| Appendix C. Bounded assessment catalogue | 34 |
+| 1. Introduction and project identity | 1 |
+| 2. Literature review - method and prior systems | 3 |
+| 3. Requirements and scope | 6 |
+| 4. System architecture | 8 |
+| 5. AI methodology - labels and ground truth | 20 |
+| 6. Technical implementation and code mapping | 24 |
+| 7. Evaluation methodology | 28 |
+| 8. Market value and practical feasibility | 30 |
+| 9. Project management and risk register | 31 |
+| 10. Conclusion and future work | 32 |
+| 11. Implementation handover - read this first | 33 |
+| References | 36 |
+| Appendix A. Submission and reproducibility checklist | 38 |
 
 # List of figures, tables and abbreviations
 
 | Figure | Title | Page |
 | --- | --- | --- |
-| 4.1 | Proposed component architecture | 8 |
-| 4.2 | Context diagram: system boundary | 9 |
-| 4.3 | DFD Level 1: assessment and evidence flows | 10 |
-| 4.4 | DFD Level 2: decomposition of process 3.0 | 11 |
-| 4.5 | Use-case view of the proposed system | 12 |
-| 4.6 | Misuse cases and mitigating controls | 13 |
-| 4.7 | Assessment activity flow | 14 |
+| 4.1 | Reverse proxy with an observational AI assistant | 8 |
+| 4.2 | Context DFD: lab traffic and diagnostic artifacts | 9 |
+| 4.3 | Level 1: forwarding, observation, diagnosis and export | 10 |
+| 4.4 | Level 2: diagnostic process 4.0 | 11 |
+| 4.5 | Use cases for the embedded assistant | 12 |
+| 4.6 | Misuse cases and controls | 13 |
+| 4.7 | Observed flow and asynchronous diagnosis activity | 14 |
 | 4.8 | Assessment interaction sequence | 15 |
-| 4.9 | Proposed domain class model | 16 |
-| 4.10 | Proposed relational evidence schema | 17 |
-| 4.11 | Proposed isolated deployment topology | 18 |
-| 4.12 | Persistent run-state machine | 19 |
-| 5.1 | Training and evaluation pipeline | 21 |
-| 8.1 | Proposed twelve-week schedule | 27 |
+| 4.9 | Conceptual domain classes | 16 |
+| 4.10 | Diagnostic evidence and research-label schema | 17 |
+| 4.11 | Isolated lab deployment with a local inference service | 18 |
+| 4.12 | Persistent run lifecycle | 19 |
+| 5.1 | Training pipeline with independent research labels | 22 |
+| 9.1 | Proposed twelve-week schedule | 31 |
 | Table | Page |
 | --- | --- |
 | Administrative details | i |
-| Table 1.1 - Objectives and acceptance evidence | 2 |
-| Table 2.1 - Related-work comparison | 5 |
+| Table 1.1 - Objectives and deliverables | 2 |
+| Table 2.1 - Research comparison | 5 |
 | Table 3.1 - Functional requirements | 6 |
-| Table 3.2 - Non-functional requirements (proposed targets) | 7 |
-| Table 4.1 - Use-case summaries | 12 |
-| Table 5.1 - Proposed observation schema | 22 |
-| Table 6.1 - Proposed module allocation | 23 |
-| Table 6.2 - Robustness work and verification | 24 |
-| Table 7.1 - Metrics and interpretation | 26 |
-| Table 7.2 - Results template (unmeasured) | 26 |
-| Table 8.1 - Milestones and exit criteria | 27 |
-| Table 8.2 - Project risks | 28 |
-| Table A.1 - Planned acceptance tests | 32 |
-| Table C.1 - Proposed registered action categories | 34 |
-AI: Artificial Intelligence; AiTM: Adversary-in-the-Middle; DFD: Data Flow Diagram; ERD: Entity Relationship Diagram; FYP: Final Year Project; ML: Machine Learning; RL: Reinforcement Learning; SSO: Single Sign-On; MFA: Multi-Factor Authentication; PK/FK: Primary/Foreign Key.
+| Table 3.2 - Proposed quality targets | 7 |
+| Table 4.1 - Use-case outcomes | 12 |
+| Table 5.1 - Version 1 label taxonomy | 20 |
+| Table 5.2 - Allowlisted input design | 21 |
+| Table 6.1 - Existing files and proposed integration | 24 |
+| Table 6.2 - Proposed new modules | 25 |
+| Table 6.3 - Proposed local diagnostic interface | 26 |
+| Table 6.4 - Reliability work | 27 |
+| Table 7.1 - Measures of success | 29 |
+| Table 8.1 - Positioning and alternatives | 30 |
+| Table 9.1 - Relative milestone plan | 31 |
+| Table 11.1 - Source-of-truth hierarchy | 33 |
+| Table 11.2 - Version 1 event envelope | 34 |
+| Table 11.3 - Required implementation checks | 35 |
+AI: Artificial Intelligence; AiTM: Adversary-in-the-Middle; DFD: Data Flow Diagram; ERD: Entity Relationship Diagram; FYP: Final Year Project; ML: Machine Learning; RCA: Root Cause Analysis; SSO: Single Sign-On; MFA: Multi-Factor Authentication; PK/FK: Primary/Foreign Key.
 
-# 1. Introduction
+# 1. Introduction and project identity
 
-## 1.1 Background and motivation
+## 1.1 Background
 
-Authentication assessments require choices about which checks to perform, how to interpret observations, and when evidence is sufficient. A fixed sequence is reproducible but cannot adapt to every observed state. A trained policy may prioritize useful checks, but its advantage must be demonstrated against strong non-learning baselines. Existing AI penetration-testing research already studies planning, tool interaction, and policy learning [1-4].
+A reverse proxy handles requests and responses between a browser and an upstream web application. In this project it is used inside an authorized laboratory to observe synthetic authentication workflows. An endpoint payload is not a prerequisite for the proposed reverse-proxy experiment. The research assistant analyzes observations; the reverse proxy remains the product being enhanced.
 
 ## 1.2 Problem statement
 
-The existing PhantomGate report describes an interception framework but does not establish an AI training pipeline, an independent finding verifier, or a leakage-resistant benchmark. Broad claims of zero latency, universal MFA bypass, perfect concurrency, and production readiness are unsuitable without supporting evidence. This revision proposes a narrower, measurable academic system.
+A failed authentication experiment does not by itself establish a security result. Application rejection, upstream faults, local proxy errors, interrupted clients, and missing events can produce superficially similar traces. Incorrect interpretation can lead to unsupported assessment conclusions. A single HTTP status code is insufficient to establish authenticated state or the root cause of a failure.
 
 ## 1.3 Aim
 
-Design and evaluate a learned action-selection policy for bounded authentication-security assessments in an isolated laboratory, while retaining independent scope enforcement and finding validation.
+Enhance PhantomGate with a student-trained diagnostic assistant and measured reliability improvements, while keeping its reverse-proxy architecture central and independently verifying the assistant's conclusions in a controlled laboratory.
 
-## 1.4 Research questions
+## 1.4 Research question
 
-- RQ1: At the same action budget, does the learned policy identify more distinct validated weaknesses than fixed, random, and heuristic policies?
-- RQ2: How does performance change when the application or configuration family is absent from training?
-- RQ3: What overhead and failure modes arise from uncertainty handling, missing telemetry, and policy-service failure?
-## 1.5 Intended audience
+Can a model trained on sanitized reverse-proxy telemetry distinguish authentication outcomes and technical-failure categories on unseen laboratory applications more accurately than rule-based analysis, while keeping overhead bounded?
 
-Students, supervisors, and examiners assessing both Penetration Testing and Artificial Intelligence. The system is an experimental assessment agent; its model is not a phishing detector.
+## 1.5 Scope decision
+
+The earlier proposal for an autonomous next-action policy is superseded. This report specifies outcome and failure diagnosis. Automated payload delivery, exploit selection, phishing optimization, autonomous traffic rewriting, and universal MFA-bypass claims are outside the implementation scope.
 
 
-# 1. Introduction - objectives and scope
+# 1. Objectives and proposed solution
 
-**Table 1.1 - Objectives and acceptance evidence**
-| ID | Objective | Acceptance evidence |
+**Table 1.1 - Objectives and deliverables**
+| ID | Objective | Evidence / deliverable |
 | --- | --- | --- |
-| O1 | Build a repeatable laboratory | Three synthetic apps; versioned manifests; reset tests |
-| O2 | Train our own policy | Dataset card, training code, recorded configuration, model artifact |
-| O3 | Demonstrate a fair comparison | Fixed, random, and heuristic baselines; equal budgets and observations |
-| O4 | Validate findings independently | Evidence references and verifier verdict for every reported finding |
-| O5 | Engineer reliable operation | Recovery, concurrency, scope, redaction, and shutdown test records |
-## 1.6 Included scope
+| O1 | Retain and instrument the Go reverse proxy | Metadata events without inference in the forwarding path |
+| O2 | Train an embedded diagnostic assistant | Versioned dataset, labels, model and training configuration |
+| O3 | Validate outcomes independently | App-oracle and verified fault-injection records |
+| O4 | Evaluate generalization and usefulness | Rules and ML comparisons on held-out apps |
+| O5 | Improve measured reliability | Load, failure, recovery and cancellation test records |
+| O6 | Enable implementation handover | Code map, contracts, milestones and acceptance tests |
+## 1.6 Proposed solution
 
-Lab-owned applications, synthetic accounts, versioned authentication configurations, bounded test-case selection, sanitized telemetry, model training, evidence validation, remediation retests, and academic reporting. The AI chooses registered action identifiers; it does not generate unrestricted commands.
+Collect allowlisted metadata from the proxy; assign pseudonymous correlation IDs; build bounded per-flow windows; classify outcomes and failures; abstain on insufficient evidence; and display structured diagnoses with references to observed events. Compare predictions with the independent oracle only in the evaluation pipeline.
 
-## 1.7 Scope boundaries
+## 1.7 Meaning of accuracy and robustness
 
-External identity providers, real-user credentials, live phishing campaigns, arbitrary target discovery, and autonomous changes to authorization are excluded from the research experiments. Existing network-interception modules are not assumed necessary for the proposed benchmark.
+Accuracy refers to correct diagnostic predictions and supported conclusions. Robustness refers to reliable system behavior under load, missing data, dependency failures, and interruption. AI is not a substitute for timeouts, durable storage, concurrency ownership, or correct network handling.
 
-## 1.8 Academic contribution
+## 1.8 Academic balance
 
-The candidate contribution is a reproducible authentication-focused action-selection benchmark with independent finding verification and cross-application evaluation. Neither reverse-proxy interception nor the use of AI in penetration testing is claimed as new. A publishable novelty claim requires a broader systematic review and positive or informative negative experimental evidence.
-
-
-# 2. Literature review - review method
-
-## 2.1 Review scope and source quality
-
-This is a focused narrative review, checked on 21 October 2026, rather than an exhaustive systematic review. Primary sources include conference papers, author-hosted manuscripts, arXiv records, the Microsoft Research project page, NIST guidance, and the W3C WebAuthn specification. Preprints are identified explicitly; standards and software artifacts are not presented as peer-reviewed research papers.
-
-## 2.2 Search and screening approach
-
-Queries combined automated penetration testing, reinforcement learning, authentication assessment, reverse-proxy phishing, policy generalization, and benchmarks. Sources were included when they directly informed action selection, experimental design, authentication assumptions, or assessment governance. Generic phishing-email classifiers were excluded because the proposed model selects assessment actions rather than classifying messages.
-
-## 2.3 Autonomous penetration testing
-
-Schwartz and Kurniawati [1] study model-free reinforcement learning within a network simulator and report limitations as problem size grows. This establishes simulated policy learning as prior work. Becker et al. [2] compare Q-learning, DQN, and A3C in NASim scenarios. Their preprint supports algorithm comparisons but also makes clear that small simulated environments limit general claims.
-
-## 2.4 LLM-assisted assessment
-
-PentestGPT [3], published at USENIX Security 2024, evaluates LLM capabilities and organizes assessment work into interacting modules to reduce context loss. It demonstrates that AI-assisted testing and task progression are established research areas. PhantomGate-Lab instead proposes a small trained ranking policy with a finite action catalogue, making its decisions easier to budget and reproduce.
+The Penetration Testing contribution is a scoped authentication assessment workflow, evidence verification, reporting and remediation retests. The AI contribution is dataset design, student-run training, model comparison, uncertainty evaluation and generalization analysis.
 
 
-# 2. Literature review - simulation and authentication
+# 2. Literature review - method and prior systems
 
-## 2.5 Simulation and generalization
+## 2.1 Review method and limitations
 
-CyberBattleSim [4] provides an abstract environment for studying autonomous agents and reinforcement learning. It is a research software toolkit, not evidence that policies transfer automatically to live applications. NASimJax v3 [5], a 2026 preprint revised on 4 October 2026, studies policy learning, environment generation, and out-of-distribution generalization. Therefore, neither unseen-environment evaluation nor diverse scenario generation can be claimed as unique in isolation.
+This focused narrative review uses primary publication pages, author manuscripts, research records, standards, and the baseline repository. Sources were checked on 22 October 2026. Queries covered automated penetration testing, reverse-proxy authentication assessment, log anomaly detection, and failure diagnosis. This is not an exhaustive systematic review and does not establish that the proposed combination is globally unique.
 
-## 2.6 Reverse-proxy phishing research
+## 2.2 AI-assisted penetration testing
 
-Catching Transparent Phish [6], presented at ACM CCS 2021, analyzes MITM phishing toolkits and develops detection based on network characteristics. It establishes the underlying interception technique as prior work. This project uses a controlled instance as an experimental component; it does not reproduce the paper's detector or claim that arbitrary timing changes establish evasion.
+PentestGPT [1] evaluates LLM-assisted penetration testing and addresses loss of assessment context through interacting modules. Its contribution establishes that AI-guided assessment is prior work. AutoPentester [2] studies iterative tool-driven automation and reports benchmark comparisons. Adding an assistant to a security tool therefore cannot itself be claimed as novel.
 
-## 2.7 Authentication and fallback assumptions
+## 2.3 Reverse-proxy phishing analysis
 
-Ulqinaku et al. [7] investigate social-engineering downgrade from FIDO U2F to alternative authentication methods. The study concerns fallback behavior, not a general cryptographic defeat of FIDO. WebAuthn [9] defines origin- and relying-party-based authentication checks. Laboratory configurations must separate correct WebAuthn behavior from recovery or fallback policy weaknesses.
+Catching Transparent Phish [3] analyzes MITM phishing toolkits and develops network-based detection. It provides context for the existing framework but asks a different question from diagnosing the reliability and outcome of a controlled experiment. Its reported detector performance must not be transferred to this proposed model.
 
-## 2.8 Assessment methodology
+## 2.4 Authentication semantics
 
-NIST SP 800-115 [8] provides guidance for planning, conducting, analyzing, and reporting security assessments. It informs scope and evidence practices; citing it does not certify this project. The proposed workflow adds machine learning within that assessment lifecycle.
+Ulqinaku et al. [4] study social-engineering downgrade from FIDO to alternative authentication methods. WebAuthn [8] specifies relying-party and origin validation. These sources do not support blanket claims that a reverse proxy defeats all MFA. The lab must distinguish protocol behavior, fallback policy, and infrastructure malfunction.
 
 
-# 2. Literature review - comparison and research gap
+# 2. Literature review - diagnosis and candidate gap
 
-**Table 2.1 - Related-work comparison**
-| Source | Established contribution | Relationship to this proposal |
+## 2.5 Log-based learning is established
+
+LogBERT [5] learns normal log-sequence patterns using self-supervised training and detects deviations. This establishes sequence-based log anomaly detection as prior work. An anomaly score does not automatically identify a specific authentication outcome or establish the cause of a failure.
+
+LogRCA [6] studies root-cause candidate identification in distributed-service logs using semi-supervised learning and expert-labeled failures. Its existence means that AI-based failure diagnosis itself is not new. PhantomGate-AI must compare its task definition and evidence requirements with such work rather than comparing only with penetration-testing agents.
+
+## 2.6 Candidate research gap
+
+The reviewed systems emphasize general assessment automation, phishing-toolkit detection, or general service-log diagnosis. This proposal investigates a narrower task: jointly label authentication outcomes and technical-failure categories from secret-free proxy observations, with an independent lab oracle, explicit abstention, and held-out application evaluation.
+
+That positioning is an inference from the reviewed sources, not a proven absence of related work. A follow-up review should search authentication-specific diagnosis, proxy observability, process mining, and uncertainty-aware log analysis before any first-of-its-kind claim.
+
+## 2.7 Falsifiable contribution
+
+A successful study would show useful diagnosis beyond well-designed rules under stated conditions. If known error flags already solve the task, or a heuristic matches the model on unseen apps, report that result. The contribution may then be a benchmark, replication, or negative-result study rather than a superior AI algorithm.
+
+
+# 2. Related-work comparison and novelty boundaries
+
+**Table 2.1 - Research comparison**
+| Source | Established scope | Proposed distinction to evaluate |
 | --- | --- | --- |
-| [1] Schwartz & Kurniawati, 2019 | RL policies in a network simulator | AI action selection is prior art; motivates scalable baselines |
-| [2] Becker et al., 2024 preprint | RL algorithm comparison in NASim | Motivates equal-budget evaluation and simulation limits |
-| [3] PentestGPT, 2024 | LLM-assisted assessment and benchmark | Compare task progression; our design uses a finite trained ranker |
-| [4] CyberBattleSim, research toolkit | Abstract autonomous-agent environment | Supports repeatability; abstraction limits transfer |
-| [5] NASimJax v3, 2026 preprint | Fast simulation and policy generalization | Generalization itself is not a new contribution |
-| [6] Kondracki et al., 2021 | MITM toolkit analysis and detection | Provides authentication-threat context, not an action policy |
-| [7] Ulqinaku et al., 2021 | FIDO fallback/downgrade user study | Distinguishes recovery weaknesses from protocol guarantees |
-## 2.9 Candidate gap and falsification
+| [1] PentestGPT, 2024 | LLM assessment assistance and context | Proxy-specific outcome/failure labels |
+| [2] AutoPentester, 2025 | Iterative pentesting automation | Read-only diagnosis rather than action planning |
+| [3] Transparent Phish, 2021 | MITM toolkit analysis and detection | Diagnosis of lab experiment observations |
+| [4] FIDO downgrade, 2021 | User behavior and fallback attacks | Separate rejection from technical faults |
+| [5] LogBERT, 2021 | Log-sequence anomaly detection | Task-specific labels and independent oracle |
+| [6] LogRCA, 2024 | Distributed-service failure diagnosis | Authentication context; missing events; holdouts |
+## 2.8 What can be original
 
-The proposed study narrows to evidence-verified authentication assessment: compare small trained action policies across held-out synthetic applications while controlling observations and action budgets. This combination is a candidate gap in the sources reviewed, not a demonstrated first. A follow-up review must check authentication-specific benchmarks and recent agent systems. If comparable work exists, position this as a replication, benchmark extension, or reliability study.
+Potential student contributions are a documented authentication-trace benchmark, a reproducible oracle-alignment method, a calibrated diagnostic model, and an integrated proxy assistant evaluated under application shift. Each contribution needs comparison with relevant existing work; a new project name or code integration is not sufficient.
 
-A null result is acceptable: if the heuristic equals or outperforms the trained model on held-out apps, report that outcome rather than changing test splits or claiming universal superiority.
+## 2.9 What is not claimed
+
+Reverse-proxy interception, generic AI assistants, log anomaly detection, root-cause analysis, and unseen-environment testing already have substantial prior work. The proposed model does not prove causation from correlations alone. Production certification and universal superiority are not claimed.
 
 
-# 3. Requirements engineering
+# 3. Requirements and scope
 
-## 3.1 Stakeholders and operational assumptions
+## 3.1 Actors and operating assumptions
 
-The student operator configures assessments; the supervisor approves the laboratory scope; the researcher curates datasets and trains models; the examiner reviews evidence and reproducibility. All experiments use provisioned applications with synthetic accounts. Host and network isolation are prerequisites, not responsibilities delegated to the model.
+A student operator starts scoped laboratory runs. A supervisor approves scope. A researcher curates labels and trains models. An examiner reviews repeatability and evidence. All applications and identities are synthetic and provisioned within an isolated lab; default external egress is denied.
 
 **Table 3.1 - Functional requirements**
 | ID | Requirement | Verification |
 | --- | --- | --- |
-| FR01 | Load a versioned scope and scenario manifest | Reject incomplete or invalid manifests |
-| FR02 | Select only registered assessment actions | Reject unknown IDs and invalid arguments |
-| FR03 | Enforce scope and budget before execution | Scope and exhaustion integration tests |
-| FR04 | Capture redacted observations with evidence IDs | Schema and secret-canary tests |
-| FR05 | Train and load a versioned ranking model | Training replay and artifact compatibility checks |
-| FR06 | Validate and deduplicate findings independently | Known-positive and known-negative fixtures |
-| FR07 | Support stop, cleanup, reset, and retest | Interruption and reset-equivalence tests |
-| FR08 | Export an evidence-linked report | Every finding resolves to a verifier record |
-## 3.2 Interfaces
+| FR01 | Validate a frozen lab manifest before start | Reject unauthorized target or invalid manifest |
+| FR02 | Emit allowlisted proxy metadata events | Schema and redaction tests |
+| FR03 | Construct bounded correlated flow windows | Window, concurrency and missing-event fixtures |
+| FR04 | Predict outcome and failure with confidence | Offline fixtures and model-contract tests |
+| FR05 | Abstain when evidence is inadequate | Incomplete-window and schema-error tests |
+| FR06 | Keep oracle labels separate from inference | Split and feature-allowlist audit |
+| FR07 | Display evidence-linked diagnoses and reports | Every explanation references existing events |
+| FR08 | Support disable, cancellation and cleanup | Model outage and shutdown tests |
+## 3.2 Assistant authority
 
-The policy interface accepts a sanitized state and permitted-action list. It returns ranked action IDs, confidence, and a structured reason code. The runner accepts only validated actions. The verifier has separate access to lab ground truth; its hidden scenario facts never enter policy features.
+The assistant may summarize observed evidence, return diagnostic categories, identify missing observations, and suggest a repeat of an approved lab check for human review. It may not choose external targets, invoke shell commands, change routing, generate payloads, or declare a verified security finding without independent evidence.
 
 
-# 3. Requirements - quality and traceability
+# 3. Quality requirements and acceptance targets
 
-**Table 3.2 - Non-functional requirements (proposed targets)**
-| ID | Requirement / target | Acceptance evidence |
+**Table 3.2 - Proposed quality targets**
+| ID | Requirement / initial target | Acceptance evidence |
 | --- | --- | --- |
-| NFR01 | Zero out-of-scope executions in negative tests | Gate audit records and network-denial evidence |
-| NFR02 | Zero seeded secret values in exported telemetry | Automated canary scans of dataset and report |
-| NFR03 | No corrupted committed records after interruption | Crash-injection and recovery tests |
-| NFR04 | No detected races in supported execution paths | Race-check logs plus concurrent reader/writer tests |
-| NFR05 | Local model p95 decision time <= 250 ms | Measured hardware and load documented |
-| NFR06 | Cleanup completes within 10 s of stop request | Fault and cancellation integration tests |
-| NFR07 | All reported findings have verifier evidence | Foreign-key checks and report validation |
-These are initial acceptance targets, not measured achievements. Revise them with the supervisor before final testing and record any changes before inspecting the final holdout.
+| NFR01 | No AI-dependent wait in request forwarding | Request path remains responsive during model outage |
+| NFR02 | No secret values in exported model data | Canary scans and allowlist schema checks |
+| NFR03 | Memory and queue capacity are bounded | Saturation test and observable drop counts |
+| NFR04 | No detected data races in supported paths | Concurrent tests and Go race-check logs |
+| NFR05 | Committed diagnosis records survive interruption | Crash-recovery tests |
+| NFR06 | Local p95 diagnosis <= 250 ms after window closure | Measured on disclosed hardware |
+| NFR07 | Proxy p95 overhead <= 10% at a declared load | Paired AI-off/on test with confidence interval |
+| NFR08 | No new work after cancellation; cleanup <= 10 s | Cancellation and worker-drain tests |
+These are provisional engineering acceptance targets, not achieved results. Freeze final thresholds after a pilot and before final evaluation. Specify the workload, network conditions, event rates and supported platform. An absolute latency limit should accompany relative overhead if the baseline is very fast.
 
 ## 3.3 Requirements traceability
 
-O1 maps to FR01, FR07, NFR03 and NFR06; O2 maps to FR04-FR05 and NFR02; O3 maps to FR03 and the evaluation protocol; O4 maps to FR06-FR08 and NFR07; O5 maps to NFR01-NFR06. Appendix A provides the validation matrix.
-
-## 3.4 Feasibility
-
-A CPU workstation can support the initial tabular models and small lab applications. Record actual CPU, RAM, OS, dependency versions, and runtime measurements. A GPU and large language model are optional extensions rather than prerequisites.
+O1 maps to FR01-FR03 and NFR01-NFR03; O2 maps to FR04-FR05; O3 maps to FR06-FR07; O4 maps to the held-out protocol; O5 maps to NFR04-NFR08; O6 maps to the handover chapter and acceptance matrix. AI failure reduces diagnostic availability, not forwarding availability.
 
 
-# 4. System design - architecture
+# 4. System architecture
 
-![Figure 4.1 - Proposed component architecture](diagrams/figure-4-1.svg)
+![Figure 4.1 - Reverse proxy with an observational AI assistant](diagrams/figure-4-1.svg)
 
-## 4.1 Separation of authority
+## 4.1 Data path versus assistant path
 
-The trained policy recommends an action. The deterministic gate decides whether it may execute. The verifier decides whether evidence supports a finding. These roles remain distinct to prevent a plausible model output from becoming authorization or ground truth.
+Browser-to-application forwarding is the primary path. Sanitized event emission uses a non-blocking bounded queue. A separate worker calls the model after a window closes. The request handler never waits for model inference. Full queues increment drop counters and mark affected windows incomplete.
 
-## 4.2 Existing and proposed components
+## 4.2 Independent truth boundary
 
-Existing Go packages provide the repository foundation. The orchestrator, scope gate, ML registry, sanitized dataset pipeline, and independent verifier shown here are proposed additions. No executable offensive capability is added by this report revision.
-
-
-# 4. System design - context DFD
-
-![Figure 4.2 - Context diagram: system boundary](diagrams/figure-4-2.svg)
-
-## 4.3 DFD conventions
-
-This report uses a context diagram with process 0, followed by Level 1 processes 1.0-5.0 and a Level 2 decomposition of process 3.0. Rounded nodes denote processes, tinted rectangles denote external entities, and marked rectangles denote data stores. Arrows carry data rather than execution order.
-
-The boundary includes assessment coordination and evidence handling. The lab applications and researcher are external entities. No direct external-to-store flow is permitted; data passes through a validating process.
+The oracle is deliberately absent from the live inference path. It is joined with frozen predictions only in the research evaluator. The model cannot read application ground-truth logs, injected-fault identifiers, scenario labels, or future events.
 
 
-# 4. System design - DFD Level 1
+# 4. Context data-flow diagram
 
-![Figure 4.3 - DFD Level 1: assessment and evidence flows](diagrams/figure-4-3.svg)
+![Figure 4.2 - Context DFD: lab traffic and diagnostic artifacts](diagrams/figure-4-2.svg)
 
-## 4.4 Balancing and data stores
+## 4.3 DFD notation and balancing
 
-Operator scope enters 1.0; checks and observations cross the lab boundary through 3.0 and 4.0; artifacts leave through 5.0. The researcher supplies a model to 2.0. These preserve the context flows; the researcher entity is repeated for readability.
+This report uses process 0 for the context diagram; Level 1 contains processes 1.0-5.0; Level 2 decomposes diagnostic process 4.0. Processes use rounded shapes, entities use tinted rectangles, and stores use marked rectangles. Arrows represent data flows, not scheduling.
 
-D1 records immutable scope and run parameters. D2 stores redacted events, verifier verdicts, and evidence references. Training exports omit hidden scenario configuration and ground-truth labels from model feature columns.
-
-
-# 4. System design - DFD Level 2
-
-![Figure 4.4 - DFD Level 2: decomposition of process 3.0](diagrams/figure-4-4.svg)
-
-## 4.5 Gate behavior
-
-Authorization checks include target identity, action membership, input schema, remaining budget, run state, and adapter preconditions. Rejection is an auditable result, not a trigger to let the model invent an alternative target.
-
-A timeout or missing result becomes an indeterminate observation. It is never converted automatically into a confirmed weakness. Every allowed adapter call consumes the predefined cost, including failed attempts, to preserve fair budget comparisons.
+The lab entity aggregates the browser and application for context readability. The operator supplies frozen scope and run parameters. The researcher supplies a compatible model and receives redacted exports. The evaluator compares predictions with a separately provisioned oracle.
 
 
-# 4. System design - use cases
+# 4. DFD Level 1
 
-![Figure 4.5 - Use-case view of the proposed system](diagrams/figure-4-5.svg)
+![Figure 4.3 - Level 1: forwarding, observation, diagnosis and export](diagrams/figure-4-3.svg)
 
-**Table 4.1 - Use-case summaries**
-| Case | Precondition | Success / alternate outcome |
+## 4.4 Boundary flows
+
+Process 5.0 writes D3 and exports reports to the examiner and redacted data to the researcher. These preserve the context flows. The model is frozen during a run; oracle labels never feed live inference.
+
+
+# 4. DFD Level 2
+
+![Figure 4.4 - Level 2: diagnostic process 4.0](diagrams/figure-4-4.svg)
+
+## 4.5 Inference boundary
+
+The diagnosis record includes predicted outcome, predicted failure category, confidence, abstention reason, model version and evidence IDs. It is not an independent verifier verdict. A model outage or schema mismatch produces UNAVAILABLE or INVALID_INPUT without changing traffic forwarding.
+
+Missing telemetry is recorded separately from semantic flow outcome. A partial observation must not be labeled as an application rejection simply because no success event was seen.
+
+
+# 4. Use-case diagram and specifications
+
+![Figure 4.5 - Use cases for the embedded assistant](diagrams/figure-4-5.svg)
+
+**Table 4.1 - Use-case outcomes**
+| Case | Preconditions | Success / alternative |
 | --- | --- | --- |
-| UC01 | Provisioned lab and owner approval | Frozen scope; invalid manifest rejected |
-| UC02 | Approved scope, reset lab, model available | Budgeted run; stop or timeout triggers cleanup |
-| UC03 | Evidence IDs and verifier available | Confirmed / rejected / indeterminate finding |
-| UC04 | Versioned redacted dataset and split manifest | Model + metrics; incompatible schema rejected |
-UC02 includes scope validation on each action and evidence processing after each result. UC04 belongs to the research workflow and does not change the authority of UC01.
+| UC01 | Lab owner approval and manifest | Approved frozen scope / reject |
+| UC02 | Healthy reset lab and approved scope | Traffic + observations / safe cancellation |
+| UC03 | Diagnosis and event references | Human-reviewed assessment / insufficient evidence |
+| UC04 | Frozen data and split manifest | Versioned model and metrics / invalid dataset |
+UC03 shows predictions and verified evaluation labels distinctly. A diagnosis may be wrong; the interface must not call it a confirmed vulnerability automatically.
 
 
-# 4. System design - misuse cases
+# 4. Misuse-case diagram
 
-![Figure 4.6 - Misuse cases and mitigating controls](diagrams/figure-4-6.svg)
+![Figure 4.6 - Misuse cases and controls](diagrams/figure-4-6.svg)
 
-## 4.6 Abuse prevention as system behavior
+## 4.6 Testable misuse behavior
 
-Misuse cases are requirements tests. A model-recommended external target must be rejected. Secret canaries must disappear before export. A policy-generated assertion must not create a finding without verifier evidence. Exhausted budgets and stop requests must prevent new adapter executions.
+Reject an out-of-scope lab configuration before forwarding starts. Drop unapproved telemetry fields before enqueueing. Reject forged evidence references at report generation. Saturating or stopping the model service must not block the request handler.
 
-The operator remains responsible for lab authorization. Network-level isolation supplements the application gate; neither a prompt nor a policy confidence score is a security boundary.
-
-
-# 4. System design - activity and state
-
-![Figure 4.7 - Assessment activity flow](diagrams/figure-4-7.svg)
-
-## 4.7 Run-state transition specification
-
-CREATED becomes VALIDATED after scope checks, then READY after reset and health checks. READY becomes RUNNING only on explicit start. RUNNING transitions to STOPPING on completion, cancellation, exhausted budget, or fatal failure. STOPPING becomes CLOSED only after cleanup evidence; cleanup failure produces FAILED_REQUIRES_REVIEW.
-
-The activity loop above describes control flow. Figure 4.12 separately captures the persistent state machine, including failure and restart behavior.
+The diagnosis interface accepts structured data, not executable instructions. If a future natural-language renderer is added, untrusted event content must remain data and its prose may not override the recorded labels or authorization.
 
 
-# 4. System design - sequence diagram
+# 4. Activity and lifecycle design
+
+![Figure 4.7 - Observed flow and asynchronous diagnosis activity](diagrams/figure-4-7.svg)
+
+## 4.7 Window closure
+
+Close a flow window on an observed terminal event, an idle timeout, cancellation, maximum event count, or maximum duration. Record the closure reason. Observation windows bound memory and inference input; they are not themselves proof that the application authenticated or rejected the synthetic user.
+
+## 4.8 Evidence ordering
+
+Use monotonic duration measurement within a process and sequence numbers per flow. Treat cross-process timestamps as approximate. Correlation identifiers are generated by the lab controller and validated as opaque identifiers; do not derive them from passwords or cookie values.
+
+
+# 4. Sequence diagram
 
 ![Figure 4.8 - Assessment interaction sequence](diagrams/figure-4-8.svg)
-## 4.8 Normal and exceptional interaction
+## 4.9 Runtime interaction
 
-Each policy decision carries run ID, schema version, state digest, and ranked action IDs. The gate binds its permit to the current run and action; changing the state or target requires a new check. The runner returns an observation reference rather than a model-authored success claim.
+The proxy forwards the request independently of the diagnostic worker. Allowlisted metadata is emitted without waiting for inference. The worker submits a closed window to the local model and stores the returned diagnosis. The operator sees its confidence and status.
 
-On denial, no adapter call occurs and the orchestrator records the rejection. On timeout, cancellation propagates to the runner and the verifier records an indeterminate result. The next state is constructed only from sanitized observations available to all compared policies.
-
-
-# 4. System design - domain class model
-
-![Figure 4.9 - Proposed domain class model](diagrams/figure-4-9.svg)
-
-## 4.9 Class responsibilities
-
-These are proposed conceptual classes, not existing Go type declarations. The policy has no execution method. Action adapters implement a registered interface with bounded inputs and cancellation. The verifier owns finding verdicts; the reporting layer reads immutable verified records.
-
-Persistence entities are detailed in the next diagram. Class associations describe responsibilities and object relationships rather than database foreign keys.
+Separately, the research evaluator joins frozen predictions to oracle records. The live model cannot query that oracle. If the model is unavailable, the worker records UNAVAILABLE and uses bounded retry or skips according to configuration; it never silently claims a successful diagnosis.
 
 
-# 4. System design - entity relationship diagram
+# 4. Domain class model
 
-![Figure 4.10 - Proposed relational evidence schema](diagrams/figure-4-10.svg)
+![Figure 4.9 - Conceptual domain classes](diagrams/figure-4-9.svg)
 
-## 4.10 Integrity and retention
+## 4.10 Implementation meaning
 
-Foreign keys prevent orphan evidence. A unique key on run_id and dedup_key avoids counting repeated observations as new findings. FindingEvidence implements the many-to-many relationship between findings and events. ModelVersion records provenance rather than storing executable model content in the database.
+Existing PhantomProxy is retained; other types are proposed. EventSink has non-blocking semantics. DiagnosisClient owns model communication, deadlines and schema compatibility. ResearchEvaluator is excluded from runtime inference dependencies.
 
-Store only redacted values in event payloads. Configure retention and deletion for each run. Use transactions for action completion, evidence insertion, and verifier verdicts.
-
-
-# 4. System design - deployment
-
-![Figure 4.11 - Proposed isolated deployment topology](diagrams/figure-4-11.svg)
-
-## 4.11 Deployment constraints
-
-The policy container cannot directly contact lab targets. The runner has only the network access required for the frozen scenario. Training artifacts are mounted read-only during evaluation. The model service accepts no arbitrary shell commands or executable serialized objects from untrusted sources.
-
-Containers improve repeatability but do not alone establish isolation. Verify routing, name resolution, host access, and egress denial before each assessment batch.
+The conceptual model is not a claim that these Go types already exist. The handover chapter maps responsibilities to existing files and proposed modules.
 
 
-# 4. System design - state and data lifecycle
+# 4. Entity relationship diagram
 
-![Figure 4.12 - Persistent run-state machine](diagrams/figure-4-12.svg)
+![Figure 4.10 - Diagnostic evidence and research-label schema](diagrams/figure-4-10.svg)
 
-## 4.12 Crash and resume rules
+## 4.11 Separation and integrity
 
-A restarted controller never resumes a RUNNING record silently. It marks the interrupted run for review, verifies cleanup, and requires a new run or an explicitly documented resume protocol. CLOSED is immutable except for retention metadata.
+OracleLabel is stored in a research-only database or access boundary. A runtime prediction may not query it. Foreign keys protect evidence references. One model may produce many diagnoses; multiple models may score the same frozen flow in offline comparison.
 
-## 4.13 Data lifecycle
-
-Collect minimal telemetry, redact before durable storage, validate its schema, bind it to a run and action, derive verified labels, export a versioned dataset, then apply retention. Keep training splits and final test manifests immutable. Store model artifacts with checksums and training provenance.
+Store no credential or session-token values in Event. Raw network bodies are not required for the proposed model. Persist versioned labels with provenance and reviewer status so corrections remain auditable.
 
 
-# 5. AI methodology - learning formulation
+# 4. Deployment diagram
 
-## 5.1 Decision problem
+![Figure 4.11 - Isolated lab deployment with a local inference service](diagrams/figure-4-11.svg)
 
-At step t, the policy receives observation state x_t, a permitted action mask A_t, and remaining budget b_t. It returns a ranking over A_t or STOP. Only the independently authorized top action is executed. The environment is partially observable; the feature state is not assumed to reveal all hidden application properties.
+## 4.12 Deployment choices
 
-## 5.2 Initial supervised approach
+A local sidecar is an embedded product component even though it is a separate process. It avoids coupling Go forwarding to Python inference. Bind the model service to loopback or an isolated service network, authenticate local calls where appropriate, and deny its target access.
 
-Expert annotators label one or more useful next actions for sampled training states using documented assessment criteria. Record disagreements and acceptable alternatives rather than forcing a single arbitrary action. Train a classifier or action ranker on state-action examples, grouping all examples from the same scenario family into the same split.
-
-For a practical first implementation, compare multinomial logistic regression with gradient-boosted trees. Candidate features include completed-check indicators, observed outcome categories, evidence completeness, timeouts, and budget remaining. Action identity may be an input to a pairwise ranker; raw target names and hidden weakness flags may not.
-
-## 5.3 Objective and decision rule
-
-Fit the model using a documented classification or ranking loss with class weights chosen on training data. Tune hyperparameters and abstention thresholds on validation data only. Mask disallowed actions before selection; if no admissible action remains or confidence is insufficient, STOP or request operator review.
-
-## 5.4 Scope of model training
-
-The students train these policies themselves; using an API to generate a report is not the AI contribution. Reinforcement learning is a future extension requiring a reliable simulator and independently verified rewards. It is not required for the initial FYP.
+The offline evaluator may read both stores after predictions are frozen. The proxy and model receive no oracle credentials. Record actual OS support; the existing repository's cross-platform claims require verification.
 
 
-# 5. AI methodology - dataset and pipeline
+# 4. Run-state machine
 
-![Figure 5.1 - Training and evaluation pipeline](diagrams/figure-5-1.svg)
+![Figure 4.12 - Persistent run lifecycle](diagrams/figure-4-12.svg)
 
-## 5.5 Sampling and labels
+## 4.13 Degradation and restart
 
-Begin with a pilot to estimate class balance and annotation effort. A provisional collection target is 300-600 resettable assessment episodes across three lab applications and multiple configuration families; this is a planning estimate, not a guarantee of adequate statistical power. Freeze sample-size decisions using pilot variance before final evaluation.
+Assistant health is a separate dimension: HEALTHY, DEGRADED or UNAVAILABLE. A model outage need not end an otherwise authorized lab run. Show the diagnostic outage explicitly. Never translate missing predictions into NORMAL results.
 
-Training labels describe useful next actions. Evaluation labels describe independently verified weaknesses. The model never receives the latter as live input. Avoid duplicated templates or near-identical traces crossing split boundaries.
+After a crash, mark interrupted runs for review, recover committed records, and verify lab cleanup before any new run. DRAINING stops new work, cancels or bounds outstanding requests, and flushes accepted events within a documented deadline.
 
 
-# 5. AI methodology - features and uncertainty
+# 5. AI methodology - labels and ground truth
 
-**Table 5.1 - Proposed observation schema**
-| Feature group | Examples | Restriction |
+## 5.1 Two prediction heads
+
+Use separate supervised targets: authentication outcome and technical-failure category. This avoids forcing mutually compatible conditions into one class. For example, an interrupted upstream connection can coexist with an incomplete authentication flow.
+
+**Table 5.1 - Version 1 label taxonomy**
+| Head | Values | Label authority |
 | --- | --- | --- |
-| Assessment progress | Completed-check bitmap; remaining budget | No future outcomes or hidden scenario metadata |
-| Observed behavior | Result category; redirect count; timeout flag | Only measurements available to every policy |
-| Evidence quality | Missing-field count; verifier status from prior step | No unexecuted-check labels |
-| Action context | Registered ID; fixed cost; observed preconditions | No unrestricted command text |
-| Excluded data | Passwords, cookie values, auth headers, raw identifiers | Never exported as model inputs |
+| Outcome | COMPLETE, REJECTED, INCOMPLETE, UNKNOWN | Instrumented app state and complete episode evidence |
+| Failure | NONE, PROXY, UPSTREAM, CLIENT, UNKNOWN | Verified fault condition plus observed provenance |
+| Prediction status | PREDICTED, ABSTAINED, UNAVAILABLE, INVALID_INPUT | Runtime evidence/schema/health checks |
+COMPLETE means the synthetic application confirms completion of its configured authentication flow. REJECTED means an explicit app-level rejection is confirmed. Neither implies that a vulnerability exists. UNKNOWN is a ground-truth ambiguity label; ABSTAINED is a model decision not to assert a label.
+
+## 5.2 Oracle construction
+
+The lab app records outcome events independently of the proxy. Fault injections occur only in lab fixtures and are verified as active; scheduling an injection is not sufficient evidence that it caused the observed failure. Multi-fault episodes receive a documented primary label or remain UNKNOWN and are reported separately.
+
+The oracle, fault ID, scenario name, hidden label and future events are forbidden as model features. Ground truth is joined only after inference or for supervised training targets.
+
+
+# 5. Dataset and feature engineering
+
+**Table 5.2 - Allowlisted input design**
+| Group | Examples | Restrictions |
+| --- | --- | --- |
+| Correlation | Opaque flow ID; sequence number | IDs used for grouping only, not model predictors |
+| Observed events | request_started; upstream_response; timeout; flow_closed | Enumerated codes; no free-form raw errors |
+| Response metadata | Status class; content-type category; size bucket | No body content, credentials, tokens or raw headers |
+| Timing / completeness | Elapsed intervals; event count; missing-event flags | No oracle-derived completion indicators |
+| Sequence structure | Event-order transitions; duration summaries | Only events available before window closure |
+## 5.3 Dataset collection
+
+Create three synthetic applications with different implementation styles and repeatable configurations. Collect normal, explicit-rejection, technical-fault and incomplete-observation episodes. Include benign slow conditions and failures in more than one application so labels do not collapse into application identity.
+
+Begin with a pilot; a provisional planning range is 300-600 complete episodes, not individual requests. Determine final sample size and class balance from pilot variance and annotation effort. Maintain application, scenario-family, collection-period and duplicate-group identifiers outside feature columns.
+
+## 5.4 Privacy and label quality
+
+Construct telemetry by allowlist, not by saving raw traffic and redacting later. Seed canary secrets in fixtures and scan all exports. Review a stratified sample of labels independently, record disagreements, and version corrections. Synthetic data is still subject to retention and access controls.
+
+
+# 5. Training and evaluation pipeline
+
+![Figure 5.1 - Training pipeline with independent research labels](diagrams/figure-5-1.svg)
+
+## 5.5 Model progression
+
+Implement explicit rules and a majority-class baseline first. Train logistic regression and gradient-boosted trees on window summaries. Add a small sequence model only if event ordering provides measurable benefit and sufficient data exists. An LLM chatbot or external API is not required.
+
+Use identical train/validation/test groups for all compared models. Fit preprocessing on training only. Handle class imbalance with training-only resampling or weights. Record hyperparameter search budget to avoid unfair comparisons.
+
+
+# 5. Uncertainty and explanation design
+
 ## 5.6 Calibration and abstention
 
-Calibrate confidence on validation groups using a method appropriate to sample size. Report calibration error or Brier score along with the proportion of states on which the policy abstains. Compare coverage at matched abstention rules or count STOP decisions explicitly so selective reporting cannot inflate performance.
+Choose probability calibration and abstention thresholds using validation groups only. Require minimum evidence completeness before trusting the classifier. Report risk versus coverage: a system that abstains on almost every difficult episode must not appear superior through selective accuracy alone.
 
-## 5.7 Distribution shift and feedback
+## 5.7 Evidence-linked explanations
 
-Test missing fields, altered latency, application-family holdouts, and previously unseen combinations of known configuration factors. Detect schema incompatibility deterministically. Unexpected observations should produce a bounded stop or review request, not retraining during the final test.
+Version 1 explanations are deterministic templates populated from observed event IDs and model output. Example: predicted failure category UPSTREAM; evidence contains connection-timeout event e17 and no terminal app response; confidence 0.72. Such a diagnosis is a prediction, not causal proof. This example is illustrative, not measured.
 
-## 5.8 Reproducibility
+Do not send raw credentials or unrestricted logs to an external model. If a future language layer is added, it may paraphrase structured records but cannot invent evidence IDs, upgrade confidence, change labels, or initiate actions.
 
-Record dataset hashes, split membership, annotation guideline version, code commit, dependency lockfile, random seeds, hyperparameters, model checksum, and actual hardware. Do not refit preprocessing on validation or test data.
+## 5.8 Avoid trivial or leaked learning
+
+If a timeout flag directly determines a label, a simple rule may be optimal. Keep that strong baseline and report results honestly. Test ambiguous and mixed observations separately, without artificially hiding useful features from rules. Do not include fault-injection names or application-specific identifiers that reveal labels.
+
+## 5.9 Model provenance
+
+Record code commit, dataset and split hashes, feature schema, label version, seeds, fitted preprocessing, hyperparameters, calibration configuration, model hash and hardware. Freeze model artifacts during evaluation. Never update weights from final-test outcomes.
 
 
-# 6. Implementation and integration plan
+# 6. Technical implementation and code mapping
 
-## 6.1 Baseline provenance
+The reviewed software baseline is Un-9oon/PhantomGate commit 8ae8437a4900b03fbaf187ac98bbde6127687efa [9]. The earlier documentation branch does not implement the AI system. Reinspect the supplied checkout and its instructions before editing; local code may have changed.
 
-The source baseline inspected for report revision is Un-9oon/PhantomGate commit 8ae8437a4900b03fbaf187ac98bbde6127687efa [10]. The repository contains a Go proxy, storage, configuration, phishlet handling, a local fake target, and tests. File presence and source review do not establish that every feature works or that all tests pass.
-
-**Table 6.1 - Proposed module allocation**
-| Module | Responsibility | Implementation status |
+**Table 6.1 - Existing files and proposed integration**
+| Existing path / symbol | Verified responsibility | Proposed change |
 | --- | --- | --- |
-| research/orchestrator | Run state, budget and cancellation | Proposed |
-| research/scope | Manifest validation and action permits | Proposed |
-| research/adapters | Bounded synthetic-lab action interface | Proposed |
-| research/evidence | Sanitization, verification, deduplication | Proposed |
-| ml/data + ml/train | Dataset preparation and policy training | Proposed |
-| ml/evaluate | Held-out closed-loop comparisons | Proposed |
-| reports/ | Evidence-linked academic and run reports | This revised design report only |
-## 6.2 Integration contract
+| internal/proxy/proxy.go / ServeHTTP | Core request and response handling | Emit allowlisted metadata; never call inference inline |
+| internal/proxy/proxy.go / ErrorHandler | Proxy error response handling | Emit normalized technical-error events |
+| internal/config/config.go | Defaults and YAML loading | Add validated assistant/lab settings |
+| cmd/phantomgate/main.go | Startup, listeners and signal handling | Wire optional worker; graceful shutdown |
+| internal/store/store.go | Existing capture-oriented JSON store | Do not use captured secrets as AI training data |
+| internal/api/server.go | API registration and lifecycle methods | Inspect wiring first; add only read-only diagnosis views |
+## 6.1 Integration rule
 
-Retain existing code attribution and isolate new research modules. Expose typed lab observations through a narrow adapter rather than letting the model operate existing console commands freely. Add schema compatibility checks at each boundary. Audit storage and lifecycle behavior before using the framework as an experiment runner.
-
-## 6.3 Delivery stages
-
-Implement the resettable lab and verifier first, then fixed and heuristic baselines, then data collection and model training. A learned policy cannot be evaluated credibly on top of an unreliable ground-truth pipeline.
+Add isolated diagnosis modules rather than replacing the reverse proxy. Preserve documented forwarding behavior during instrumentation, and test regressions. General reliability fixes must not add payload-delivery, credential-collection, evasion or autonomous target-selection functionality.
 
 
-# 6. Reliability and security engineering
+# 6. Proposed modules and implementation sequence
 
-**Table 6.2 - Robustness work and verification**
-| Concern | Proposed change | Verification |
+**Table 6.2 - Proposed new modules**
+| Path | Responsibility |
+| --- | --- |
+| internal/telemetry/ | Allowlisted Event type, sanitizer, non-blocking EventSink |
+| internal/diagnosis/ | Window builder, prediction client, structured explanations |
+| internal/evidence/ | Redacted events, diagnosis persistence and export |
+| ai/ | Feature code, supervised training, calibration, local service |
+| lab/ | Synthetic apps, manifests, reset scripts and separate oracle |
+| evaluation/ | Split audit, baselines, metrics and overhead harness |
+| docs/AI_HANDOVER.md + PROJECT_SPEC.json | Implementation intent and machine-readable scope |
+## 6.2 Order of implementation
+
+- M1: Inspect the baseline; run existing supported checks; create a reproducible synthetic lab.
+- M2: Define schemas and sanitizer; prove secret-canary removal and non-blocking event emission.
+- M3: Implement windowing, independent oracle fixtures, evidence store and rule baseline.
+- M4: Collect a pilot dataset; freeze labels and grouped splits; train simple classifiers.
+- M5: Add the local read-only assistant and explicit degraded states.
+- M6: Run held-out diagnosis and proxy reliability experiments; update measured report sections.
+## 6.3 First usable milestone
+
+One synthetic application, a redacted event trace, one closed window, a rules-based diagnosis, and an independently verified label. Model complexity comes after this end-to-end evidence pipeline works.
+
+
+# 6. Interface and configuration contracts
+
+**Table 6.3 - Proposed local diagnostic interface**
+| Interface | Request / result | Failure behavior |
 | --- | --- | --- |
-| Durability | Transactional evidence store or atomic snapshot replacement | Interrupted-write and recovery fixtures |
-| Concurrency | Immutable read snapshots; clear ownership | Concurrent serialization/mutation tests and race checks |
-| Lifecycle | Explicit timeouts, cancellation and readiness | Listener failure, timeout and stop tests |
-| Resources | Bounded queues, event sizes and run budgets | Sustained-load and backpressure tests |
-| Privacy | Redaction before persistence and export | Seeded-secret canary scans |
-| Model integrity | Pinned model/schema hashes; trusted loading | Tampered-artifact and schema-mismatch tests |
-| Auditability | Append-only action/verdict records with provenance | Evidence-reference and deduplication validation |
-## 6.4 Evidence-based readiness
+| POST /v1/diagnose | schema_version, model_id, window_id, sanitized events | Typed result; deadline; no execution commands |
+| GET /healthz | Service health only | No sensitive model or event content |
+| GET /readyz | Loaded model and schema compatibility | Not ready if artifact invalid |
+| TryEmit(event) -> bool | Non-blocking, sanitized typed event | False on saturation; increment loss counters |
+## 6.4 Version 1 envelope
 
-The original report's assertions of universal MFA bypass, zero latency, zero technical debt, and certified production readiness are withdrawn in this revision. The previous report's claimed test passes have not been reproduced here. Test existence is acknowledged without treating it as a successful run.
+A diagnosis returns schema_version, model_id, flow_id, window_id, status, predicted_outcome, predicted_failure, outcome_confidence, failure_confidence, abstain_reason and evidence_event_ids. Confidence fields are null for UNAVAILABLE or INVALID_INPUT. Class probabilities must be finite and bounded. Reject duplicate IDs and unknown schema versions.
 
-Robustness claims must state the supported OS, workload, hardware, failure cases, and measured results. NIST guidance [8] and WebAuthn [9] inform design assumptions; this report makes no certification or standards-compliance claim.
+## 6.5 Proposed defaults - subject to pilot
+
+Assistant disabled by default; loopback service URL; maximum 10,000 queued events; maximum 256 events or 60 seconds per window; 5-second idle closure; 250 ms inference deadline; bounded workers and at most one retry outside the forwarding path. These numbers are design defaults, not performance claims. Track every dropped event and set affected windows incomplete.
+
+## 6.6 Persistence
+
+Use a separate transactional SQLite evidence database as the initial design, with one writer and immutable read snapshots. Select the Go driver after checking supported OS, CGO requirements and dependency policy. Persist only redacted records and propagate storage failures explicitly.
 
 
-# 7. Evaluation protocol
+# 6. Reliability engineering and degraded behavior
+
+**Table 6.4 - Reliability work**
+| Area | Required behavior | Verification |
+| --- | --- | --- |
+| Timeouts | Explicit server, upstream and worker deadlines | Slow upstream and idle-client fixtures |
+| Concurrency | Clear ownership; immutable snapshots | Reader/writer stress and race checks |
+| Queues | Bound capacity; never block proxy on inference | Model hang + queue saturation |
+| Storage | Transactions and recovery of committed records | Interrupt writer; reopen; check integrity |
+| Shutdown | Stop intake; cancel; bounded drain; cleanup status | Signal and forced-stop tests |
+| Model integrity | Pinned trusted artifact and schema | Hash mismatch and invalid-input tests |
+| Observability | Counters for loss, failures and inference status | Metrics match injected conditions |
+## 6.7 Limits of AI assistance
+
+The assistant can improve interpretation only if measurements demonstrate it. It cannot repair unsafe concurrency or establish correctness of forwarding by prediction. Separate regression and reliability tests are mandatory. The earlier report's zero-latency and production-ready claims are withdrawn.
+
+When storage fails, report degradation; do not manufacture missing evidence. When the model fails, continue authorized forwarding without diagnosis or stop according to explicit operator configuration. Do not silently relabel predictions using a fallback while presenting them as model output.
+
+
+# 7. Evaluation methodology
 
 ## 7.1 Experimental design
 
-Use three synthetic applications with independently varied authentication-policy configurations. Hold out an entire application for testing and rotate the held-out application. Within the remaining applications, keep scenario families and near-duplicate configurations together when forming training and validation groups. Keep a separate final holdout for any final model selection claim.
+Use three independently implemented synthetic applications. Hold out one entire application for testing, rotate it, and report each fold separately. Within remaining applications, group configuration families, collection periods and near-duplicates before splitting training and validation. If architecture decisions are made after inspecting rotated folds, obtain an additional untouched holdout for a final generalization claim.
 
-## 7.2 Baselines and fairness
+## 7.2 Fair baselines
 
-Compare a fixed checklist, uniform random selection among admissible untried actions, an expert-defined heuristic, logistic regression, and gradient-boosted trees. All policies receive the same observations, reset states, action costs, allowed actions, and termination rules. A heuristic must be designed before final-test inspection. Report its design effort alongside model-labeling effort.
+Compare majority-class prediction, explicit error/status rules, logistic regression and gradient-boosted trees. Include a sequence model only when justified. Every baseline sees the same allowed observations and window boundaries. The rule baseline is allowed to use informative error codes; do not weaken it to favor AI.
 
-## 7.3 Primary endpoint
+## 7.3 Ground-truth evaluation
 
-For each run, count distinct confirmed weakness classes or instances under a predefined deduplication rule. Plot mean validated coverage C(B) against action budget B. Repeated evidence for the same underlying weakness counts once. Compare policies on the same scenario/seed pairs.
+Freeze predictions before joining oracle labels. Score outcome and failure heads separately, and report joint correctness. Keep unknown and multi-fault cases visible. The model must not be scored against its own explanation or against labels derived solely from its input error code.
 
-## 7.4 Statistical analysis
+## 7.4 Statistics and reproducibility
 
-Use paired differences and bootstrap confidence intervals resampling independent scenario families, not individual correlated requests. Report per-application results as well as aggregates. Choose the number of independent repetitions after the pilot; a provisional minimum of five policy seeds is a planning floor, not a substitute for power analysis.
+Use paired episodes and bootstrap confidence intervals resampling independent scenario families rather than correlated requests. Determine sample sizes from the pilot. Report seeds, prevalence, class counts, exclusions and all failed runs. Do not tune thresholds on the final holdout.
 
 ## 7.5 Ablations
 
-Remove progress features, remove outcome features, disable calibration, and replace independent validation with naive success flags for an offline sensitivity study. Do not weaken authorization to conduct an ablation. Record the effect on coverage and false findings.
+Remove timing features, remove event order, disable calibration, and vary missing-event rate. Evaluate the privacy-minimal feature set against a broader metadata-only set. Never expose secrets or oracle fields as an ablation.
 
 
-# 7. Evaluation - metrics and planned results
+# 7. Metrics and acceptance tests
 
-**Table 7.1 - Metrics and interpretation**
-| Metric | Definition | Interpretation |
+**Table 7.1 - Measures of success**
+| Dimension | Metric | Interpretation |
 | --- | --- | --- |
-| Coverage at budget B | Distinct verified findings before budget exhaustion | Primary comparison; fixed deduplication rule |
-| Finding precision | Confirmed / all reported findings | Indeterminate reports remain visible |
-| Time to first confirmed finding | Elapsed time including policy overhead | Report no-finding runs as censored |
-| Decision latency | p50 / p95 per policy decision | State hardware, batch size and warmup |
-| Abstention rate | STOP/review decisions due to uncertainty / decisions | Report with coverage, not in isolation |
-| Scope / privacy failures | Executed denied actions / leaked canaries | Must be zero in defined acceptance tests |
-## 7.6 Results status
+| Diagnostic correctness | Per-class precision/recall; macro-F1; confusion matrices | Avoid majority-class accuracy alone |
+| Joint prediction | Both heads correct per episode | Report UNKNOWN and abstentions explicitly |
+| Uncertainty | Calibration score; selective risk vs coverage | Accuracy gain must disclose abstention cost |
+| Generalization | Per-held-out-app scores and confidence intervals | Do not infer internet-wide validity |
+| Runtime impact | Proxy p50/p95/p99; throughput; CPU/RAM | Paired AI-off/on at identical workload |
+| Degradation | Drop rate; queue depth; outage behavior | Bounded resources and explicit missing data |
+## 7.6 Minimum acceptance scenarios
 
-No model has been trained or evaluated as part of this document revision. No accuracy, coverage improvement, latency, or robustness result is available. The final report should replace this section with measured tables, coverage curves, confidence intervals, failure analyses, and links to immutable experiment manifests.
+Test successful and rejected lab flows; verified proxy/upstream/client faults; incomplete telemetry; invalid schema; model outage; queue saturation; storage interruption; concurrent windows; cancellation; and post-remediation retests. These are planned tests, not completed validation.
 
-**Table 7.2 - Results template (unmeasured)**
-| Policy | Coverage @ fixed B | Precision | p95 decision time |
-| --- | --- | --- | --- |
-| Fixed checklist | Not measured | Not measured | Not measured |
-| Random / heuristic | Not measured | Not measured | Not measured |
-| Logistic regression | Not measured | Not measured | Not measured |
-| Gradient-boosted trees | Not measured | Not measured | Not measured |
-Do not substitute illustrative numbers for actual results. Preserve unsuccessful runs and explain exclusions using criteria fixed before analysis.
+## 7.7 Results status
+
+No proposed model has been trained or evaluated in this documentation revision. No diagnostic accuracy, overhead improvement or robustness pass rate is available. The final submission must replace planned-result wording with measured tables, logs, plots and failure analyses.
 
 
-# 8. Project management and feasibility
+# 8. Market value and practical feasibility
 
-![Figure 8.1 - Proposed twelve-week schedule](diagrams/figure-8-1.svg)
-**Table 8.1 - Milestones and exit criteria**
-| Weeks | Deliverable | Exit criterion |
+## 8.1 Intended users and value hypothesis
+
+Potential users are university security labs, penetration-testing training teams and internal assessment engineers working on authorized applications. The value hypothesis is less manual trace interpretation, fewer unsupported conclusions, repeatable teaching experiments and clearer evidence handover. These are proposed benefits, not verified customer demand or revenue projections.
+
+**Table 8.1 - Positioning and alternatives**
+| Alternative | Existing value | Proposed differentiator to test |
 | --- | --- | --- |
-| 1-2 | Scope, literature and protocol | Supervisor-reviewed question and frozen pilot plan |
-| 3-4 | Lab, reset and verifier | Known fixtures pass; scope and redaction checks pass |
-| 5-6 | Dataset pilot and baseline policies | Label agreement, split audit and sample plan recorded |
-| 7-8 | Trained and calibrated policies | Reproducible training; validation-only selection |
-| 9-10 | Held-out evaluation and reliability | Paired results, confidence intervals and fault tests |
-| 11-12 | Report, demo and reproducibility pack | Independent rerun and source/PDF consistency |
-## 8.1 Resources and costs
+| Generic AI pentesting agents [1,2] | Broad assessment planning and automation | Focused evidence-linked proxy diagnosis |
+| General log-analysis systems [5,6] | Anomaly or failure analysis | Authentication-specific labels and lab oracle |
+| Manual proxy/log review | Expert interpretation and flexibility | Repeatable assistant with measured uncertainty |
+| Rules-only diagnostic layer | Transparent and inexpensive | Learned model only if it adds measured value |
+## 8.2 Market validation plan
 
-Plan for one local workstation, isolated application services, Python ML tooling, the Go framework, and storage for redacted traces. Use existing hardware where feasible. No monetary budget is asserted because local procurement prices and available resources were not supplied. Record actual costs, licenses, compute time, and contributor effort in the final submission.
+Interview a small approved sample of instructors and assessment engineers using synthetic traces. Compare interpretation time, error rate and perceived usefulness with and without the assistant in a counterbalanced task. Obtain required institutional approval before human-subject studies. Treat usability work as optional if the FYP schedule is limited.
+
+## 8.3 Feasibility and costs
+
+A local CPU workstation is the initial target; a GPU and external LLM API are not required. Record actual hardware, compute time, storage, dependency licenses and annotation effort. No market-size, pricing, cost-saving or commercial-readiness figure is asserted.
 
 
-# 8. Risk register and academic integrity
+# 9. Project management and risk register
 
-**Table 8.2 - Project risks**
-| Risk | Likelihood / impact | Mitigation |
+![Figure 9.1 - Proposed twelve-week schedule](diagrams/figure-9-1.svg)
+**Table 9.1 - Relative milestone plan**
+| Weeks | Milestone | Exit criterion |
 | --- | --- | --- |
-| Dataset leakage | Medium / high | Group splits; duplicate audit; freeze final holdout |
-| Insufficient labels | High / medium | Pilot annotation effort; prioritize small models |
-| Simulator artifacts | High / high | Hold out apps; vary benign conditions; disclose transfer limits |
-| No ML improvement | Medium / medium | Strong baselines; publish null results honestly |
-| Unsafe target selection | Low / high | Independent gate plus network isolation |
-| Unreliable verifier | Medium / high | Known fixtures; manual evidence review subset |
-| Deadline pressure | Medium / high | Supervised policy first; RL deferred |
-| Template mismatch | Medium / low | Apply university template before submission |
-## 8.2 Attribution and ethical conduct
+| 1-2 | Scope and literature | Approved protocol and label taxonomy |
+| 3-4 | Telemetry and independent oracle | One end-to-end synthetic fixture |
+| 5-6 | Dataset and rule baseline | Split audit and reviewed pilot labels |
+| 7-8 | Train and embed model | Reproducible model and degraded states |
+| 9-10 | Evaluate and harden | Held-out metrics and fault-test records |
+| 11-12 | Report and handover | Independent rebuild and evidence-linked demo |
+## 9.1 Principal risks
 
-Credit the existing repository and all reused code. Identify student-authored modules, dataset generation, annotation, model training, and evaluation separately. Do not claim ownership of prior interception techniques or paper contributions. Report the use of writing or coding assistance according to university policy.
-
-## 8.3 Limitations
-
-Synthetic applications cannot establish real-world attack success or safety. Three applications provide limited external validity. Expert labels encode annotator preferences. A finite catalogue constrains what can be discovered. An offline-trained policy can encounter unseen states during execution. These limitations should remain explicit even if laboratory results are positive.
+Label leakage, insufficient classes, app-identity shortcuts, noisy fault attribution, no ML gain, incomplete telemetry, and schedule pressure are the main research risks. Mitigate through group holdouts, provenance, strong rules, explicit UNKNOWN labels, observable loss and a tabular-model-first plan. Do not compensate for weak results by expanding into payload automation.
 
 
-# 9. Conclusion and expected deliverables
+# 10. Conclusion and future work
 
-PhantomGate-Lab reframes the existing framework as a component of an AI-assisted offensive assessment workflow in an isolated laboratory. Its research objective is to evaluate learned test prioritization, not to claim a new interception technique. The AI recommends bounded actions; separate mechanisms enforce authorization and validate findings.
+## 10.1 Conclusion
 
-## 9.1 Expected deliverables
+PhantomGate-AI retains the reverse proxy as its core and embeds a trained observational assistant. Its candidate research contribution is evidence-grounded authentication-outcome and technical-failure diagnosis under application shift, sanitized inputs and uncertain observations. Conventional engineering establishes forwarding reliability separately from predictive performance.
 
-- A versioned, resettable synthetic authentication laboratory and rules-of-engagement manifest.
-- A registered action catalogue, deterministic scope gate, and evidence verifier.
-- A redacted dataset with annotation guidelines, group splits, and provenance.
-- Student-trained baseline and ranking models with documented hyperparameters.
-- A fair closed-loop evaluation with independently validated findings and uncertainty analysis.
-- Reliability evidence, an academic report, a demonstration script, and a reproducibility package.
-## 9.2 Conditions for the final claims
+The expected FYP deliverables are an instrumented proxy, bounded telemetry pipeline, independent lab oracle, labeled dataset, trained models, local assistant, comparative evaluation and reproducible handover. This document specifies the intended system but does not claim that the implementation or experiments are complete.
 
-Claim a research contribution only after the related-work comparison and experiments establish what is added. Claim improved coverage only against the stated baselines, budgets, and held-out conditions. Claim robustness only within the workloads and failure cases actually tested. If the model does not improve over the heuristic, retain that result and analyze why.
+## 10.2 Future work after the initial evaluation
 
-## 9.3 Immediate next step
+- Extend to more independently implemented lab applications and authentication workflows.
+- Investigate small temporal models if summary-feature models miss ordering information.
+- Evaluate distribution-shift monitoring and controlled retraining with new validation data.
+- Improve multi-fault labels and distinguish observed correlation from experimentally established cause.
+- Add locally generated natural-language explanations constrained to structured evidence.
+- Conduct approved operator usability studies and evaluate interoperability with observability tools.
+## 10.3 Limits on the final claims
 
-Confirm the university template and team details, agree on the finite lab action catalogue with the supervisor, implement the verifier and reset process, and complete a small pilot before committing to a larger training dataset.
+A successful FYP need not prove a globally new algorithm. It must identify its original work, justify the candidate gap and report honest results. General failure diagnosis and AI pentesting already exist. No claim of complete gap closure, universal novelty or production robustness is justified before the review and measurements support it.
+
+
+# 11. Implementation handover - read this first
+
+## 11.1 Binding scope for a receiving AI or developer
+
+Build PhantomGate-AI as specified here: a Go reverse proxy with an optional, read-only, student-trained diagnostic assistant. Implement outcome/failure classification, uncertainty and evidence-linked reporting. Do not substitute the superseded next-action-selection agent or a generic phishing detector.
+
+**Table 11.1 - Source-of-truth hierarchy**
+| Order | Artifact | Meaning |
+| --- | --- | --- |
+| 1 | Latest explicit human instruction | Clarifies or changes authorized project scope |
+| 2 | This revision + docs/AI_HANDOVER.md | Current design and implementation roadmap |
+| 3 | PROJECT_SPEC.json | Machine-readable taxonomy and interfaces |
+| 4 | Inspected checkout and its repository instructions | Actual existing symbols and constraints |
+| 5 | Earlier report / README claims | Historical context; verify rather than assume |
+## 11.2 First actions after receiving the code
+
+Read repository instructions and inspect git status. Identify the actual commit and compare it with baseline [9]. Read proxy.go, config.go, main.go and relevant tests. Record which existing checks can run on the host. Establish the minimal synthetic fixture and telemetry contract before model code. Keep unrelated user changes intact.
+
+## 11.3 Definition of a correct first increment
+
+The proxy still forwards the synthetic interaction with the assistant disabled. Enabling event capture adds only allowlisted metadata. A slow or missing model does not block forwarding. A single flow produces an auditable redacted window, rule diagnosis and independent label. No credentials or token values appear in exported training data.
+
+
+# 11. Handover - data contract and edge cases
+
+**Table 11.2 - Version 1 event envelope**
+| Field | Type / rule | Model usage |
+| --- | --- | --- |
+| schema_version | Constant pg.telemetry.v1 | Compatibility check only |
+| run_id / flow_id / event_id | Opaque non-secret strings; unique event ID | Grouping/evidence only |
+| sequence / elapsed_ms | Monotonic sequence; non-negative finite duration | Ordering and timing |
+| kind | Validated event enumeration | Feature |
+| status_class / error_code | Optional normalized enums | Feature; strong rule baseline |
+| size_bucket / content_type | Optional allowlisted categories | Feature |
+| completeness | Missing count; drop indicator; closure reason | Feature / abstention gate |
+## 11.4 Correlation and missingness
+
+Correlate events using a controller-issued opaque flow identifier carried only in the lab context. Never hash secret tokens as a shortcut. If correlation is unavailable or ambiguous, keep events in an unassigned/unknown window instead of joining different users. Reject client-provided IDs outside the expected format.
+
+## 11.5 Window semantics
+
+A window is a bounded observed portion of one flow. Multiple windows may belong to a flow; all remain in the same dataset split. Terminal observations, idle closure and telemetry loss are separate fields. A closure timeout does not imply authentication rejection. Late events follow a versioned policy: append to a new linked window and mark the earlier prediction as partial, without rewriting history.
+
+
+# 11. Handover - example record and testing map
+
+## 11.6 Illustrative output - not an experimental result
+
+Example identity: schema pg.diagnosis.v1; model demo-model; flow lab-flow-001; status ABSTAINED; predicted outcome UNKNOWN; predicted failure UNKNOWN; abstain reason MISSING_TERMINAL_EVIDENCE; evidence IDs e01 and e03. This demonstrates the contract only. No trained confidence or measured performance is implied.
+
+**Table 11.3 - Required implementation checks**
+| Test ID | Behavior | Completion evidence |
+| --- | --- | --- |
+| T01 | Assistant off preserves lab forwarding | Regression fixture and response assertions |
+| T02 | Canary secrets absent before queue/export | Schema and artifact scans |
+| T03 | Full queue never blocks ServeHTTP | Saturation timing and loss counters |
+| T04 | Windows never cross flow boundaries | Interleaved concurrent fixtures |
+| T05 | Oracle fields never reach inference | Feature-allowlist and access-boundary tests |
+| T06 | Model outage has explicit status | UNAVAILABLE record; forwarding still operates |
+| T07 | Predictions reference existing events | Foreign-key and report checks |
+| T08 | Held-out applications remain unseen | Immutable split manifest and duplicate audit |
+| T09 | Committed records recover after crash | Integrity checks on reopened evidence store |
+| T10 | Stop cancels and drains within bounds | Shutdown timing and cleanup status |
+All checks above are pending implementation. Save actual commands, environment information and results when they run. Do not copy the old report's claimed test passes into this revision as evidence.
 
 
 # References
 
-[1] J. Schwartz and H. Kurniawati. Autonomous Penetration Testing using Reinforcement Learning. arXiv:1905.05965, 2019. Preprint.https://arxiv.org/abs/1905.05965
+[1] G. Deng et al. PentestGPT: Evaluating and Harnessing Large Language Models for Automated Penetration Testing. USENIX Security, pp. 847-864, 2024.https://www.usenix.org/conference/usenixsecurity24/presentation/deng
 
-[2] N. Becker, D. Reti, E. V. Ntagiou, M. Wallum, and H. D. Schotten. Evaluation of Reinforcement Learning for Autonomous Penetration Testing using A3C, Q-learning and DQN. arXiv:2407.15656, 2024. Preprint.https://arxiv.org/abs/2407.15656
+[2] Y. Ginige, A. Niroshan, S. Jain, and S. Seneviratne. AutoPentester: An LLM Agent-based Framework for Automated Pentesting. arXiv:2510.05605, 2025; record lists IEEE TrustCom 2025.https://arxiv.org/abs/2510.05605
 
-[3] G. Deng et al. PentestGPT: Evaluating and Harnessing Large Language Models for Automated Penetration Testing. 33rd USENIX Security Symposium, pp. 847-864, 2024.https://www.usenix.org/conference/usenixsecurity24/presentation/deng
+[3] B. Kondracki, B. Amin Azad, O. Starov, and N. Nikiforakis. Catching Transparent Phish: Analyzing and Detecting MITM Phishing Toolkits. ACM CCS, 2021. DOI 10.1145/3460120.3484765.https://briankondracki.com/assets/pdf/catching_transparent_phish.pdf
 
-[4] Microsoft Research. CyberBattleSim. Research software project; source release discussed in 2021.https://www.microsoft.com/en-us/research/project/cyberbattlesim/
+[4] E. Ulqinaku, H. Assal, A. Abdou, S. Chiasson, and S. Capkun. Is Real-time Phishing Eliminated with FIDO? Social Engineering Downgrade Attacks against FIDO Protocols. USENIX Security, pp. 3811-3828, 2021.https://www.usenix.org/conference/usenixsecurity21/presentation/ulqinaku
 
-[5] R. Simon, J. Carrasquel, E. M. Antoun, W. Mees, and P. Libin. NASimJax: A GPU-Accelerated Policy Learning Framework for Penetration Testing. arXiv:2603.19864v3, revised 4 October 2026. Preprint.https://arxiv.org/abs/2603.19864v3
+[5] H. Guo, S. Yuan, and X. Wu. LogBERT: Log Anomaly Detection via BERT. arXiv:2103.04475, 2021. Cited author manuscript.https://arxiv.org/abs/2103.04475
 
-Sources checked on 21 October 2026. This focused review does not establish exhaustive coverage of the research literature.
+Primary-source review checked on 22 October 2026. Source categories and limits are stated explicitly; this is not an exhaustive systematic review.
 
 
 # References - continued
 
-[6] B. Kondracki, B. Amin Azad, O. Starov, and N. Nikiforakis. Catching Transparent Phish: Analyzing and Detecting MITM Phishing Toolkits. ACM CCS, 2021. DOI: 10.1145/3460120.3484765.https://briankondracki.com/assets/pdf/catching_transparent_phish.pdf
+[6] T. Wittkopp, P. Wiesner, and O. Kao. LogRCA: Log-based Root Cause Analysis for Distributed Services. arXiv:2405.13599, 2024; accepted at Euro-Par 2024 according to the author record.https://arxiv.org/abs/2405.13599
 
-[7] E. Ulqinaku, H. Assal, A. Abdou, S. Chiasson, and S. Capkun. Is Real-time Phishing Eliminated with FIDO? Social Engineering Downgrade Attacks against FIDO Protocols. 30th USENIX Security Symposium, pp. 3811-3828, 2021.https://www.usenix.org/conference/usenixsecurity21/presentation/ulqinaku
+[7] K. Scarfone, M. Souppaya, A. Cody, and A. Orebaugh. Technical Guide to Information Security Testing and Assessment. NIST SP 800-115, 2008. Assessment guidance.https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-115.pdf
 
-[8] K. Scarfone, M. Souppaya, A. Cody, and A. Orebaugh. Technical Guide to Information Security Testing and Assessment. NIST SP 800-115, September 2008. Guidance document.https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-115.pdf
+[8] W3C. Web Authentication: An API for accessing Public Key Credentials - Level 2. W3C Recommendation, 8 April 2021. Specification.https://www.w3.org/TR/webauthn-2/
 
-[9] W3C. Web Authentication: An API for accessing Public Key Credentials - Level 2. W3C Recommendation, 8 April 2021. Specification.https://www.w3.org/TR/webauthn-2/
+[9] Un-9oon/PhantomGate. Existing source framework. Baseline commit 8ae8437a4900b03fbaf187ac98bbde6127687efa. Software artifact, not a paper.https://github.com/Un-9oon/PhantomGate/tree/8ae8437a4900b03fbaf187ac98bbde6127687efa
 
-[10] Un-9oon/PhantomGate. Source repository and original project report. Baseline commit 8ae8437a4900b03fbaf187ac98bbde6127687efa. Software artifact.https://github.com/Un-9oon/PhantomGate/tree/8ae8437a4900b03fbaf187ac98bbde6127687efa
+## Assessment guidance
 
-
-# Appendix A. Validation and traceability matrix
-
-**Table A.1 - Planned acceptance tests**
-| Test | Requirement | Expected result / evidence |
-| --- | --- | --- |
-| AT01 Manifest rejection | FR01, NFR01 | Invalid or external target denied before execution |
-| AT02 Budget exhaustion | FR03 | No new action after the budget reaches zero |
-| AT03 Secret canary | FR04, NFR02 | No seeded secret in DB export, model inputs or report |
-| AT04 Verifier fixtures | FR06, NFR07 | Known true/false/unknown cases classified correctly |
-| AT05 Evidence deduplication | FR06 | Repeated observations do not inflate findings |
-| AT06 Schema mismatch | FR05 | Incompatible model/state rejected explicitly |
-| AT07 Crash recovery | NFR03 | Committed evidence intact; interrupted run reviewed |
-| AT08 Concurrent access | NFR04 | No mutable snapshot leakage or detected races |
-| AT09 Cancellation | FR07, NFR06 | Runner stops; cleanup status persisted |
-| AT10 Held-out replay | O3 | Split hash stable; identical paired scenario seeds |
-| AT11 Policy unavailable | FR03, FR05 | Stop or explicitly configured fixed baseline; no hidden fallback |
-| AT12 Report integrity | FR08 | Each finding resolves to verified evidence |
-Execution status for every acceptance test above: not run in this report revision. Archive actual commands, logs, environment details, timestamps, and pass/fail outcomes when implementation is available.
+NIST SP 800-115 [7] informs authorization, planning, evidence analysis and reporting. Citing guidance does not certify this project or prove compliance. Independent verification and documented boundaries remain implementation requirements.
 
 
-# Appendix B. Detailed use and misuse specifications
+# Appendix A. Submission and reproducibility checklist
 
-## UC02 - Run a bounded assessment
+- Complete student, institution, supervisor and academic-session details; obtain real signatures.
+- Apply the institution's cover, margin, approval, binding and reference requirements.
+- Keep this report, AI_HANDOVER.md and PROJECT_SPEC.json consistent.
+- Credit existing code and identify student-authored contributions.
+- Freeze dataset, labels, splits, model and code versions before final evaluation.
+- Attach actual per-class results, uncertainty curves, overhead measurements and reliability logs.
+- Record failed runs and negative results; do not claim novelty solely from AI integration.
+- Rebuild the PDF and inspect every rendered page after substantive edits.
+- Give the receiving AI the current code snapshot, this report, handover and specification together.
+## Suggested receiving-AI prompt
 
-Actor: student operator. Preconditions: approved immutable scope, reset lab, compatible model, and configured budget. Trigger: explicit start request. Main flow: validate manifest; establish readiness; construct sanitized state; rank actions; enforce scope and budget; execute one registered action; verify and persist evidence; repeat or stop; clean up; export report. Postcondition: closed run with traceable actions and verified findings.
+Read the report, docs/AI_HANDOVER.md and PROJECT_SPEC.json first. Summarize the fixed scope and current implementation status. Inspect the actual checkout and repository instructions. Keep PhantomGate as the reverse proxy and implement the observational diagnosis pipeline incrementally. Begin with schemas, redaction, a synthetic fixture and independent labels. Do not replace the project with an action-selection agent or claim unrun tests and unmeasured results.
 
-Alternate flows: invalid scope -> reject before start; model unavailable -> stop or use a predeclared baseline with its identity recorded; adapter timeout -> indeterminate evidence; stop request -> cancel and clean up; cleanup failure -> review-required state. No alternate flow expands target scope.
+## Status at handover
 
-## MC01 - Attempt to expand authorization
-
-Threat: a malformed model response or operator input names an external target or unregistered action. Expected control: gate rejects it and records the reason. Acceptance evidence: denial record and absence of a corresponding network request. Residual risk: faulty network policy; verify egress independently.
-
-## MC03 - Attempt to count unsupported findings
-
-Threat: a model or adapter reports success without supporting server evidence. Expected control: the independent verifier marks the case rejected or indeterminate; only confirmed deduplicated findings enter the primary coverage metric. Acceptance evidence: fixtures with fabricated status messages and missing references.
-
-## Submission checklist
-
-Complete team and institution fields; obtain real signatures; apply the institutional template; confirm reference style; attach actual results; include attribution and assistance disclosure; verify source/PDF consistency; demonstrate clean reset and reproducibility.
-
-
-# Appendix C. Bounded assessment catalogue
-
-The following conceptual action categories make the proposed policy concrete. They are not commands or exploit procedures. Each requires a supervisor-approved lab adapter with explicit inputs, preconditions, cost, timeout, and independently verifiable evidence. The complete catalogue must be frozen before comparative evaluation.
-
-**Table C.1 - Proposed registered action categories**
-| ID | Lab assessment category | Expected observation |
-| --- | --- | --- |
-| A01 | Inspect authentication-response metadata | Normalized flags and response category |
-| A02 | Compare access decisions for synthetic test roles | Expected versus observed authorization verdict |
-| A03 | Check synthetic-session expiry behavior | Server-confirmed expired/active state |
-| A04 | Check logout invalidation in a resettable fixture | Verifier-confirmed session lifecycle result |
-| A05 | Assess configured recovery-policy consistency | Observed policy category and evidence reference |
-| A06 | Repeat a prior lab check after remediation | Independent before/after comparison |
-| STOP | End assessment and clean up | Closed run or cleanup-review state |
-## Action contract
-
-Inputs: run ID, registered category ID, lab target ID, typed parameters, and current state digest. Outputs: status, observation reference, elapsed time, charged cost, and cancellation status. A category ID never grants permission to discover arbitrary targets or invoke unrestricted tools.
-
-## Ground truth and success criteria
-
-The scenario manifest defines expected application behavior. The verifier compares observed evidence with that expectation and issues a confirmed, rejected, or indeterminate verdict. Scenario configuration is available to the verifier and evaluation harness only; the policy learns from prior observed results, not hidden labels.
+Documentation and diagram assets are delivered. Proposed runtime modules, lab extensions, data collection, model training and evaluation remain to be implemented and verified.
