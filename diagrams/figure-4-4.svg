@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="325" viewBox="0 0 453 325"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
+<polyline points="125,37.5 160,37.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="122.7" y="28.5" width="39.6" height="12" fill="white"/><text x="142.5" y="37.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">candidate</text>
+<polyline points="222.5,60 222.5,110" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="196.1" y="76.0" width="52.800000000000004" height="12" fill="white"/><text x="222.5" y="85.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">typed action</text>
+<polyline points="385.0,60 222.5,110" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="279.55" y="76.0" width="48.400000000000006" height="12" fill="white"/><text x="303.75" y="85.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">constraints</text>
+<polyline points="160,132.5 125,132.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="109.5" y="123.5" width="66.0" height="12" fill="white"/><text x="142.5" y="132.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">denied + reason</text>
+<polyline points="222.5,155 222.5,205" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="209.3" y="171.0" width="26.400000000000002" height="12" fill="white"/><text x="222.5" y="180.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">permit</text>
+<polyline points="285,227.5 320,227.5" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="269.5" y="218.5" width="66.0" height="12" fill="white"/><text x="302.5" y="227.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">bounded request</text>
+<polyline points="385.0,250 222.5,285" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="290.55" y="258.5" width="26.400000000000002" height="12" fill="white"/><text x="303.75" y="267.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">result</text>
+<polyline points="222.5,250 222.5,285" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="191.7" y="258.5" width="61.60000000000001" height="12" fill="white"/><text x="222.5" y="267.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">adapter status</text>
+<rect x="0" y="15" width="125" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="62.5" y="34.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">From 2.0</text>
+<text x="62.5" y="46.2" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Candidate action ID</text>
+<rect x="320" y="15" width="130" height="45" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="385.0" y="40.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">D1 Scope + budget</text>
+<line x1="327" y1="60" x2="327" y2="15" stroke="#176B91"/>
+<rect x="160" y="15" width="125" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="222.5" y="40.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">3.1 Validate schema</text>
+<rect x="160" y="110" width="125" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="222.5" y="129.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">3.2 Check scope,</text>
+<text x="222.5" y="141.2" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">preconditions and budget</text>
+<rect x="160" y="205" width="125" height="45" rx="22.5" fill="#EDF4F7" stroke="#176B91"/>
+<text x="222.5" y="224.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">3.3 Invoke registered</text>
+<text x="222.5" y="236.20000000000002" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">lab adapter</text>
+<rect x="320" y="205" width="130" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="385.0" y="230.5" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Lab applications</text>
+<rect x="0" y="110" width="125" height="45" rx="4" fill="#FFF5ED" stroke="#176B91"/>
+<text x="62.5" y="129.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Rejected-action record</text>
+<text x="62.5" y="141.2" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">To 4.0</text>
+<rect x="160" y="285" width="125" height="40" rx="20.0" fill="#EDF4F7" stroke="#176B91"/>
+<text x="222.5" y="302.3" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">3.4 Emit result</text>
+<text x="222.5" y="313.7" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">To 4.0</text>
+</svg>

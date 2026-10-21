@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="453" height="330" viewBox="0 0 453 330"><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#176B91"/></marker></defs>
+<polyline points="137,55.0 158,55.0" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="136.5" y="46.0" width="22" height="12" fill="white"/><text x="147.5" y="55.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">uses</text>
+<polyline points="295,55.0 316,55.0" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="276.9" y="46.0" width="57.2" height="12" fill="white"/><text x="305.5" y="55.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">recommends to</text>
+<polyline points="68.5,95 68.5,150" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="50.9" y="113.5" width="35.2" height="12" fill="white"/><text x="68.5" y="122.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">1 : 0..*</text>
+<polyline points="137,190.0 158,190.0" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="129.9" y="181.0" width="35.2" height="12" fill="white"/><text x="147.5" y="190.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">1 : 0..*</text>
+<polyline points="295,190.0 316,190.0" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="287.9" y="181.0" width="35.2" height="12" fill="white"/><text x="305.5" y="190.0" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">supports</text>
+<polyline points="226.5,275 384.5,230" fill="none" stroke="#176B91" stroke-width="1.1" marker-end="url(#arrow)"/>
+<rect x="272.5" y="243.5" width="66.0" height="12" fill="white"/><text x="305.5" y="252.5" text-anchor="middle" font-family="Arial" font-size="8" fill="#52616D">creates verdict</text>
+<rect x="0" y="15" width="137" height="80" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="68.5" y="46.6" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">AssessmentRun</text>
+<text x="68.5" y="58.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">runId, scopeHash, budget</text>
+<text x="68.5" y="69.4" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">start(), stop(), close()</text>
+<rect x="158" y="15" width="137" height="80" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="226.5" y="46.6" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">PolicyService</text>
+<text x="226.5" y="58.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">modelId, schemaVersion</text>
+<text x="226.5" y="69.4" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">rank(state, allowed)</text>
+<rect x="316" y="15" width="137" height="80" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="384.5" y="46.6" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">ScopeGate</text>
+<text x="384.5" y="58.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">manifest, constraints</text>
+<text x="384.5" y="69.4" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">authorize(action)</text>
+<rect x="0" y="150" width="137" height="80" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="68.5" y="181.6" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">ActionRecord</text>
+<text x="68.5" y="193.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">actionId, cost, status</text>
+<text x="68.5" y="204.4" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">validate(), cancel()</text>
+<rect x="158" y="150" width="137" height="80" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="226.5" y="181.6" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">Observation</text>
+<text x="226.5" y="193.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">eventId, redactedFeatures</text>
+<text x="226.5" y="204.4" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">validateSchema()</text>
+<rect x="316" y="150" width="137" height="80" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="384.5" y="181.6" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">VerifiedFinding</text>
+<text x="384.5" y="193.0" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">findingId, verdict</text>
+<text x="384.5" y="204.4" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">evidenceRefs, dedupKey</text>
+<rect x="158" y="275" width="137" height="55" rx="4" fill="#EDF4F7" stroke="#176B91"/>
+<text x="226.5" y="299.8" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">EvidenceVerifier</text>
+<text x="226.5" y="311.2" text-anchor="middle" font-family="Arial" font-size="8.4" fill="#142D45">verify(evidenceRefs)</text>
+</svg>
